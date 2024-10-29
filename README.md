@@ -1,6 +1,6 @@
-# K23α Ανάπτυξη Λογισμικού Για Πληροφοριακά Συστήματα
+# K23a
 
-# Folder Structure
+## Folder Structure
 
 Here is the folder structure explained:
 
@@ -14,6 +14,6 @@ Here is the folder structure explained:
 └── tests/   # Unit-Tests
 ```
 
-# Sample Data
+## Sample Data
 
 The sample data used for this project can be found [here](http://corpus-texmex.irisa.fr/).
