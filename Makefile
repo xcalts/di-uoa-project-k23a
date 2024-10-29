@@ -1,7 +1,7 @@
 # Makefile
 
 CXX = g++
-CXXFLAGS = -std=c++11 -I./inc
+CXXFLAGS = -std=c++11 -I./inc -I./libs
 
 SRC_DIR = src
 SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
