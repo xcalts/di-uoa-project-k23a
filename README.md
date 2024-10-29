@@ -16,4 +16,5 @@ Here is the folder structure explained:
 
 ## Sample Data
 
-The sample data used for this project can be found [here](http://corpus-texmex.irisa.fr/).
+The sample data used for this project can be found in [corpus-texmex.irisa.fr](http://corpus-texmex.irisa.fr/).
+It consists of large-scale datasets of high-dimensional feature vectors extracted from real-world images.
