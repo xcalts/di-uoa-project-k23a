@@ -32,3 +32,9 @@ Here is the folder structure explained:
 
 The sample data used for this project can be found in [corpus-texmex.irisa.fr](http://corpus-texmex.irisa.fr/).
 It consists of large-scale datasets of high-dimensional feature vectors extracted from real-world images.
+
+## Contributors
+
+- Χρήστος Καλτσάς 1115202000289
+- Γιδάκος Βασίλης 1115200800022
+- Κρικελλη Ναταλια 1115202000104
