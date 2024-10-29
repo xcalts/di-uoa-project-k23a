@@ -1,5 +1,19 @@
 # K23a
 
+## Requirements
+
+```sh
+> sudo apt install build-essential
+```
+
+## Compilation
+
+To compile the program just run the following:
+
+```sh
+> make
+```
+
 ## Folder Structure
 
 Here is the folder structure explained:
