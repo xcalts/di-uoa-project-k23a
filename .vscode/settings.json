@@ -55,6 +55,8 @@
         "numbers": "cpp",
         "sstream": "cpp",
         "streambuf": "cpp",
-        "typeinfo": "cpp"
-    }
+        "typeinfo": "cpp",
+        "fstream": "cpp"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

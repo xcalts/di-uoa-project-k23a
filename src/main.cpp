@@ -8,6 +8,7 @@
 #include "rapidyaml.h"
 
 #include "conf.h"
+#include "data.h"
 #include "log.h"
 #include "validation.h"
 
@@ -23,6 +24,7 @@ Options:
 -c, --conf <conf_filepath>       The filepath to the YAML configuration file.
 -d, --dataset <dataset_filepath> The filepath to the FVECS dataset of image vectors.
 -q, --queries <queries_filepath> The filepath to the FVECS queries of image vectors.
+-e, --eval <eval_filepath>       The filepath to the IVECS evaluation metrics.
 --verbose                        Enable verbose debug output.
 
 Description:
@@ -43,6 +45,7 @@ int main(int argc, char *argv[])
         std::string conf_filepath;
         std::string dataset_filepath;
         std::string queries_filepath;
+        std::string evaluation_filepath;
         Configuration conf;
 
         argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
@@ -52,9 +55,10 @@ int main(int argc, char *argv[])
         cmdl({"-c", "--conf"}) >> conf_filepath;
         cmdl({"-d", "--dataset"}) >> dataset_filepath;
         cmdl({"-q", "--queries"}) >> queries_filepath;
+        cmdl({"-e", "--evaluation"}) >> evaluation_filepath;
 
         verbose("(main.cpp) Printing the help message, if user does not pass enough arguments.");
-        if (cmdl({"-h", "--help"}) || conf_filepath.empty() || dataset_filepath.empty() || queries_filepath.empty())
+        if (cmdl({"-h", "--help"}) || conf_filepath.empty() || dataset_filepath.empty() || queries_filepath.empty() || evaluation_filepath.empty())
         {
             std::cout << help_msg << std::endl;
             return EXIT_FAILURE;
@@ -64,11 +68,17 @@ int main(int argc, char *argv[])
         validateFileExists(conf_filepath);
         validateFileExists(dataset_filepath);
         validateFileExists(queries_filepath);
+        validateFileExists(evaluation_filepath);
 
         verbose("(main.cpp) Parsing the YAML configuration file.");
         conf = Configuration(conf_filepath);
 
-        std::cout << conf.getNoQueries() << std::endl;
+        verbose("(main.cpp) Parsing the dataset and queries images.");
+        ImageDatabase dataset = ImageDatabase(dataset_filepath);
+        ImageDatabase queries = ImageDatabase(queries_filepath);
+        NearestNeighboursDatabase nn = NearestNeighboursDatabase(evaluation_filepath);
+
+        nn.getNNs()[0].printTable();
     }
     catch (const std::runtime_error &e)
     {

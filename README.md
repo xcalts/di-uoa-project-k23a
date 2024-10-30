@@ -17,7 +17,7 @@ To compile the program just run the following:
 ## Examples
 
 ```sh
-> ./bin/k23a -c ./conf.yaml -d ./.sample/siftsmall/siftsmall_base.fvecs -q ./.sample/siftsmall/siftsmall_query.fvecs --verbose
+> ./bin/k23a -c ./conf.yaml -d ./.sample/siftsmall/siftsmall_base.fvecs -q ./.sample/siftsmall/siftsmall_query.fvecs -e ./.sample/siftsmall/siftsmall_groundtruth.ivecs --verbose
 ```
 
 ## Folder Structure

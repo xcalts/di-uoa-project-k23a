@@ -8,15 +8,29 @@
 #include "file.h"
 #include "log.h"
 
+/**
+ * @brief
+ * This class controls all the configuration logic. It is used to parse a YAML configuration file,
+ * and exports its parameters as part of its public interface.
+ *
+ */
 class Configuration
 {
 private:
-    /* Fields */
     std::string _filepath;
     std::string _contents;
     int _no_queries;
 
-    /* Functions */
+    /**
+     * @brief
+     * This functions initializes the `Configuration` object.
+     * It parses the contents of the file pointed by `filepath`.
+     * Then, it initializes the YAML tree using the `rapidyaml.h` library.
+     * Finally, it will deserialize the value to the respected variables.
+     *
+     * @param filepath
+     * The path to the YAML configuration file.
+     */
     void initialize(const std::string &filepath)
     {
         _filepath = filepath;
@@ -31,14 +45,31 @@ private:
     }
 
 public:
-    /* Constructors */
+    /**
+     * @brief
+     * Base contructor.
+     *
+     */
     Configuration() {}
+
+    /**
+     * @brief
+     * Construct a new `Configuration` object.
+     * Note that there are no validation checks for the `filepath`.
+     *
+     * @param filepath
+     * The path to the YAML configuration file.
+     */
     Configuration(const std::string &filepath)
     {
         initialize(filepath);
     }
 
-    /* Properties */
+    /**
+     * @brief Get the number of queries that results will be calculated for.
+     *
+     * @return int
+     */
     int getNoQueries()
     {
         return _no_queries;
