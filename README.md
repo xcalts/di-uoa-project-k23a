@@ -14,6 +14,12 @@ To compile the program just run the following:
 > make
 ```
 
+## Examples
+
+```sh
+> ./bin/k23a -c ./conf.yaml -d ./.sample/siftsmall/siftsmall_base.fvecs -q ./.sample/siftsmall/siftsmall_query.fvecs --verbose
+```
+
 ## Folder Structure
 
 Here is the folder structure explained:

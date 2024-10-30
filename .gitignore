@@ -1,6 +1,9 @@
 # Project Related
 siftsmall/
 
+# Ignore output
+out/
+
 # Ignore build
 bin/*
 obj/*
