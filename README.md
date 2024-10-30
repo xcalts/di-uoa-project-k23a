@@ -41,6 +41,6 @@ It consists of large-scale datasets of high-dimensional feature vectors extracte
 
 ## Contributors
 
-- Χρήστος Καλτσάς 1115202000289
-- Γιδάκος Βασίλης 1115200800022
-- Κρικελλη Ναταλια 1115202000104
+- [Χρήστος Καλτσάς 1115202000289](https://github.com/xcalts)
+- [Γιδάκος Βασίλης 1115200800022](https://github.com/sdi0800022)
+- [Κρικελλη Ναταλια 1115202000104](https://github.com/nataliakrik)
