@@ -5,10 +5,12 @@
 #include <fstream>
 #include <vector>
 
+#include "log.h"
+
 /**
  * @brief
- * This class represents an "Image" in the form of a `SIFT` descriptor.
- * Basically, the image is represented as a vector of X dimensions.
+ * It represents an `Image` in the form of a `vector` of X dimensions.
+ * The data are correspond to the `SIFT` descriptor of the original image.
  */
 class Image
 {
@@ -34,7 +36,7 @@ public:
      * @param data
      * The initial data of the `Image`.
      */
-    Image(int dimensions, std::vector<float> data)
+    Image(int dimensions, const std::vector<float> &data)
     {
         _dimensions = dimensions;
         _data = data;
@@ -145,17 +147,20 @@ public:
 
 /**
  * @brief
- * This class controls an in-memory database of `Image` objects.
+ * It represents the in-memory database of `Image` objects.
+ * It can either contain the dataset or the queries.
+ * It is initialized using a path to a `.fvecs` file.
  */
 class ImageDatabase
 {
 private:
     std::string _filepath;
     std::vector<Image> _images;
+    int _total_images;
 
-    void initialize(const std::string &filepath)
+    void initialize()
     {
-        _filepath = filepath;
+        verbose("(data.h) Parsing the .fvecs file at: " + _filepath + ".");
 
         std::ifstream filestream(_filepath, std::ios::binary);
 
@@ -182,6 +187,8 @@ private:
         }
 
         filestream.close();
+
+        _total_images = _images.size();
     }
 
 public:
@@ -202,23 +209,48 @@ public:
      */
     ImageDatabase(const std::string &fvecspath)
     {
-        initialize(fvecspath);
+        _filepath = fvecspath;
+
+        initialize();
+    }
+
+    /**
+     * @brief
+     * It returns how many images there are in the database.
+     *
+     * @return int
+     */
+    int getTotal()
+    {
+        return _total_images;
     }
 
     /**
      * @brief Get the vector containing the `Image` objects.
      *
-     * @return std::vector<Image>
+     * @return std::vector<Image>&
      */
-    std::vector<Image> getImages()
+    std::vector<Image> &getImages()
     {
         return _images;
+    }
+
+    /**
+     * @brief
+     * Get the `Image` object by index
+     * @param index
+     * The index of the desired `Image`.
+     * @return const Image&
+     */
+    const Image &getImage(int index) const
+    {
+        return _images[index];
     }
 };
 
 /**
  * @brief
- * This class contains the nearest images-neighbours of the image specified by `_image_index`.
+ * It represents the ground-truth nearest neighbours of an indexed `Image` in the dataset `ImageDatabase`.
  */
 class NearestNeighbours
 {
@@ -245,7 +277,7 @@ public:
      * @param neighbours_indexes
      * The vector containing the indices of the nearest neighbours.
      */
-    NearestNeighbours(int image_index, int dimensions, std::vector<int> neighbours_indexes)
+    NearestNeighbours(int image_index, int dimensions, const std::vector<int> &neighbours_indexes)
     {
         _image_index = image_index;
         _dimensions = dimensions;
@@ -273,7 +305,8 @@ public:
 
 /**
  * @brief
- * This class controls an in-memory database of all the nearest images-neighbours for each and every image in the `ImageDatabase`.
+ * It represents the in-memory database of all `NearestNeighbours` for each and every indexed image in the dataset `ImageDatabase`.
+ * It is used for evaluating the KNN search algorithms.
  */
 class NearestNeighboursDatabase
 {
@@ -282,9 +315,9 @@ private:
     int _dimensions;
     std::vector<NearestNeighbours> _nns;
 
-    void initialize(const std::string filepath)
+    void initialize()
     {
-        _filepath = filepath;
+        verbose("(data.h) Parsing the .ivecs file at: " + _filepath + ".");
 
         std::ifstream filestream(_filepath, std::ios::binary);
         std::vector<std::vector<int>> data;
@@ -329,22 +362,116 @@ public:
      * Construct a new `NearestNeighboursDatabase` object.
      * Note that there are not validation checks for the `filepath`.
      *
-     * @param fvecspath
+     * @param ivecspath
      * The path to the file that contains the `ivecs` evaluation vector.
      */
-    NearestNeighboursDatabase(const std::string &filepath)
+    NearestNeighboursDatabase(const std::string &ivecspath)
     {
-        initialize(filepath);
+        _filepath = ivecspath;
+        initialize();
     }
 
     /**
      * @brief Get the vector containing the `NearestNeighbours` objects.
      *
-     * @return std::vector<NearestNeighbours>
+     * @return std::vector<NearestNeighbours>&
      */
-    std::vector<NearestNeighbours> getNNs()
+    std::vector<NearestNeighbours> &getNNs()
     {
         return _nns;
+    }
+};
+
+/**
+ * @brief
+ * It represents a directed edge from one node to another with an associated weight.
+ */
+class Edge
+{
+private:
+    int _to_index;
+    float _weight;
+
+public:
+    /**
+     * @brief
+     * Base constructor.
+     *
+     */
+    Edge() {}
+
+    /**
+     * @brief Construct a new `Edge` object.
+     *
+     * @param to_index
+     * Index of the destination image in the dataset.
+     * @param weight
+     * Weight of the edge.
+     */
+    Edge(int to_index, float weight)
+    {
+        _to_index = to_index;
+        _weight = weight;
+    }
+};
+
+/**
+ * @brief
+ * It represents the database that controls the nodes and edges of the graph.
+ */
+class Graph
+{
+private:
+    int _total_nodes;
+    std::vector<std::vector<Edge>> _adjacency_list;
+
+public:
+    /**
+     * @brief
+     * Base constructor.
+     */
+    Graph() {}
+
+    /**
+     * @brief
+     * Construct a new `Graph` object.
+     * @param images
+     * The vector containing the `Image` dataset.
+     */
+    Graph(const std::vector<Image> images)
+    {
+        _total_nodes = images.size();
+        _adjacency_list.resize(_total_nodes);
+    }
+
+    /**
+     * @brief
+     * Add a directed edge with a weight.
+     * @param from_index
+     * The source node index.
+     * @param to_index
+     * The destination node index.
+     * @param weight
+     * The weight of the edge.
+     */
+    void addEdge(int from_index, int to_index, float weight)
+    {
+        if (from_index >= 0 && from_index < _adjacency_list.size())
+            _adjacency_list[from_index].push_back(Edge(to_index, weight));
+        else
+            throw std::runtime_error("Invalid from_index: " + from_index);
+    }
+
+    /**
+     * @brief
+     * Get the `Edges` object of specified node.
+     * @param index
+     * The index of the desired node.
+     * @return const std::vector<Edge>&
+     */
+    const std::vector<Edge> &getEdges(int index) const
+    {
+        return _adjacency_list[index];
     }
 };
 

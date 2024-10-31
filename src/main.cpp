@@ -73,12 +73,13 @@ int main(int argc, char *argv[])
         verbose("(main.cpp) Parsing the YAML configuration file.");
         conf = Configuration(conf_filepath);
 
-        verbose("(main.cpp) Parsing the dataset and queries images.");
+        verbose("(main.cpp) Parsing the dataset-images, queries-images and the ground truth NNs.");
         ImageDatabase dataset = ImageDatabase(dataset_filepath);
         ImageDatabase queries = ImageDatabase(queries_filepath);
         NearestNeighboursDatabase nn = NearestNeighboursDatabase(evaluation_filepath);
 
-        nn.getNNs()[0].printTable();
+        verbose("(main.cpp) Initializing the dataset graph.");
+        Graph dataset_graph = Graph(dataset.getImages());
     }
     catch (const std::runtime_error &e)
     {
