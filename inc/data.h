@@ -205,36 +205,6 @@ float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b
 }
 
 /**
- * @brief Medoids are similar in concept to means or centroids, but medoids are always restricted to be members of the data set.
- * @param dataset The dataset that you want to find the mediod for.
- * @return Point&
- */
-Point &calculateMedoid(std::vector<Point> &dataset)
-{
-    int mediod_index;
-    size_t total_points = dataset.size();
-    float minimum = std::numeric_limits<float>::max();
-
-    for (int i = 0; i < total_points; i++)
-        for (int j = 0; j < total_points; j++)
-            if (i != j)
-            {
-                Point i_point = dataset[i];
-                Point j_point = dataset[j];
-
-                float distance = euclideanDistance(i_point.vec, j_point.vec);
-
-                if (distance < minimum)
-                {
-                    minimum = distance;
-                    mediod_index = i;
-                }
-            }
-
-    return dataset[mediod_index];
-}
-
-/**
  * @brief The results of the Greedy Search algorithm.
  */
 struct GreedySearchResults
@@ -254,11 +224,36 @@ struct GreedySearchResults
  */
 class Graph
 {
+private:
+    /**
+     * @brief Calculate the set of `A` - `B`.
+     * @param A The set `A`.
+     * @param B The set `B`.
+     * @return std::unordered_set<int>
+     */
+    std::unordered_set<int> difference(const std::unordered_set<int> &A, const std::unordered_set<int> &B)
+    {
+        std::unordered_set<int> C;
+        for (const int &x : A)
+        {
+            if (B.find(x) == B.end())
+            {
+                C.insert(x);
+            }
+        }
+        return C;
+    }
+
 public:
     /**
      * @brief It contains all the points that make up the graph.
      */
     std::vector<Point> dataset;
+
+    /**
+     * @brief The medoid of the dataset.
+     */
+    Point medoid;
 
     /**
      * @brief Base Constructor
@@ -269,52 +264,80 @@ public:
      * @brief Construct a new `Graph` object.
      * @param _dataset The dataset of `Point`s that are inside the `Graph`.
      */
-    Graph(std::vector<Point> _dataset)
+    Graph(std::vector<Point> &_dataset)
     {
         dataset = _dataset;
     }
 
     /**
-     * @brief It prunes the list of candidate neighbors for a given source_node based on a pruning condition that involves an alpha scaling factor.
-     * It ensures that the source_node has at most R outgoing edges to its nearest neighbors.
-     * @param source_node The node for which we are pruning the candidate neighbors
-     * @param candidates A set of candidate node indices.
-     * @param alpha A scaling factor used in the pruning condition.
-     * @param R The maximum number of outgoing edges (neighbors) the source_node should have.
+     * @brief Medoids are similar in concept to means or centroids, but medoids are always
+     * restricted to be members of the data set.
      */
-    void robustPrune(Point &source_node, std::unordered_set<int> &candidates, float alpha, int R)
+    void calculateMedoid()
     {
-        // Add neighbors of source_node to candidates
-        for (const Edge &edge : source_node.outgoing_edges)
-        {
-            candidates.insert(edge.to_index);
-        }
+        int medoid_idx;
+        size_t total_points = dataset.size();
+        float minimum = std::numeric_limits<float>::max();
 
-        // Remove source_node from candidates if present
-        candidates.erase(source_node.index);
+        for (int i = 0; i < total_points; i++)
+            for (int j = 0; j < total_points; j++)
+                if (i != j)
+                {
+                    Point i_point = dataset[i];
+                    Point j_point = dataset[j];
 
-        // Clear the current neighbors of source_node
-        source_node.outgoing_edges.clear();
+                    float distance = euclideanDistance(i_point.vec, j_point.vec);
+
+                    if (distance < minimum)
+                    {
+                        minimum = distance;
+                        medoid_idx = i;
+                    }
+                }
+
+        medoid = dataset[medoid_idx];
+    }
+
+    /**
+     * @brief It prunes the list of candidate neighbors for a given `Point` based on a
+     * pruning condition that involves an `alpha` scaling factor.
+     * It ensures that the `Point` has at most R outgoing edges to its nearest neighbors.
+     * @param source_node The node for which we are pruning the candidate neighbors.
+     * @param V A set of candidates.
+     * @param alpha The distance threshold.
+     * @param R The maximum number of outgoing edges (neighbors) the `source_node` should have.
+     */
+    void robustPrune(Point &p, std::unordered_set<int> &V, float a, int R)
+    {
+        // Add neighbors of `p` to V and remove `p` from V if present.
+        // V <-- (V ∪ Neighbors-of-P) - {P}
+        V.erase(p.index);
+        for (const Edge e : p.outgoing_edges)
+            V.insert(e.to_index);
+
+        // Clear the current neighbors of `p`
+        // Neighbors-of-P <-- {}
+        p.outgoing_edges.clear();
 
         // Define a lambda function to compute distance to source_node
-        auto distance_to_source_node = [this, &source_node](int p_index) -> float
+        auto distance_to_source_node = [this, &p](int p_index) -> float
         {
-            return euclideanDistance(dataset[p_index].vec, source_node.vec);
+            return euclideanDistance(dataset[p_index].vec, p.vec);
         };
 
-        while (!candidates.empty())
+        // V != {}
+        while (!V.empty())
         {
             // Find p_star: the candidate closest to source_node
             int p_star_index = -1;
             float min_distance = std::numeric_limits<float>::max();
-
-            for (int c : candidates)
+            for (int candinate_idx : V)
             {
-                float distance = distance_to_source_node(c);
+                float distance = euclideanDistance(dataset[candinate_idx].vec, p.vec);
                 if (distance < min_distance)
                 {
                     min_distance = distance;
-                    p_star_index = c;
+                    p_star_index = candinate_idx;
                 }
             }
 
@@ -324,7 +347,7 @@ public:
 
             // Get current neighbors of source_node
             std::unordered_set<int> new_neighbors_indices;
-            for (const Edge &edge : source_node.outgoing_edges)
+            for (const Edge &edge : p.outgoing_edges)
             {
                 new_neighbors_indices.insert(edge.to_index);
             }
@@ -333,12 +356,12 @@ public:
             new_neighbors_indices.insert(p_star_index);
 
             // Update the neighbors of source_node
-            source_node.outgoing_edges.clear();
+            p.outgoing_edges.clear();
             for (int idx : new_neighbors_indices)
             {
                 // Assuming the weight is the Euclidean distance
-                float weight = euclideanDistance(source_node.vec, dataset[idx].vec);
-                source_node.outgoing_edges.push_back(Edge(idx, weight));
+                float weight = euclideanDistance(p.vec, dataset[idx].vec);
+                p.outgoing_edges.push_back(Edge(idx, weight));
             }
 
             // If the desired number of neighbors is reached, exit the loop
@@ -346,17 +369,17 @@ public:
                 break;
 
             // Remove p_star from candidates
-            candidates.erase(p_star_index);
+            V.erase(p_star_index);
 
             // Prepare to remove nodes from candidates based on the pruning condition
             std::vector<int> to_remove;
-            for (int other_index : candidates)
+            for (int other_index : V)
             {
                 float distance_p_star_other = euclideanDistance(dataset[p_star_index].vec, dataset[other_index].vec);
-                float distance_source_other = euclideanDistance(source_node.vec, dataset[other_index].vec);
+                float distance_source_other = euclideanDistance(p.vec, dataset[other_index].vec);
 
                 // Prune candidates using the alpha scaling factor
-                if (alpha * distance_p_star_other <= distance_source_other)
+                if (a * distance_p_star_other <= distance_source_other)
                 {
                     to_remove.push_back(other_index);
                 }
@@ -365,72 +388,62 @@ public:
             // Remove the pruned nodes from candidates
             for (int idx : to_remove)
             {
-                candidates.erase(idx);
+                V.erase(idx);
             }
         }
     }
 
     /**
-     * @brief
-     *
-     * @param source_point
-     * @param query_point
-     * @param k
-     * @param max_candinates
+     * @brief The main goal of the greedy search is to find the approximate nearest neighbors of
+     * a given query point by traversing the graph in a way that moves closer to the query point
+     * at each step. It avoids exhaustive searches by leveraging the connectivity of the graph
+     * and focusing on promising areas.
+     * @param source_point The start node.
+     * @param query_point The query node.
+     * @param k The result size (k-NNs).
+     * @param L The search list size (max candindates).
      * @return GreedySearchResults
      */
-    GreedySearchResults greedySearch(Point &source_point, Point &query_point, int k, int max_candidates)
+    GreedySearchResults greedySearch(Point &source_point, Point &query_point, int k, int L)
     {
         GreedySearchResults results;
+
         std::unordered_set<int> candidates; // Set of candidate indices
         std::unordered_set<int> visited;    // Set of visited indices
+        std::unordered_set<int> unvisited;  // Set of unvisited indices
 
         // Initialize candidates with the source point's index
         candidates.insert(source_point.index);
 
         while (true)
         {
-            // Find unvisited candidates (candidates - visited)
-            std::unordered_set<int> unvisited_candidates;
-            for (int c : candidates)
-            {
-                if (visited.find(c) == visited.end())
-                    unvisited_candidates.insert(c);
-            }
-
-            // Exit if there are no unvisited candidates
-            if (unvisited_candidates.empty())
+            // If there is no unvisited candinate, break the loop.
+            unvisited = difference(candidates, visited);
+            if (unvisited.empty())
                 break;
 
-            // Find the candidate with the minimum distance to the query point
+            // Find the candidate with the minimum distance from the query point.
             int p_star_index = -1;
             float min_distance = std::numeric_limits<float>::max();
-
-            for (int c : unvisited_candidates)
+            for (int u : unvisited)
             {
-                float distance = euclideanDistance(dataset[c].vec, query_point.vec);
+                float distance = euclideanDistance(dataset[u].vec, query_point.vec);
                 if (distance < min_distance)
                 {
                     min_distance = distance;
-                    p_star_index = c;
+                    p_star_index = u;
                 }
             }
 
-            // Safeguard in case p_star_index wasn't set
-            if (p_star_index == -1)
-                break;
-
-            // Add neighbors of p_star to candidates
-            for (Edge &edge : dataset[p_star_index].outgoing_edges)
-            {
+            // Add neighbors of `p_star` to candidates.
+            for (Edge edge : dataset[p_star_index].outgoing_edges)
                 candidates.insert(edge.to_index);
-            }
 
-            // Mark p_star as visited
+            // Mark p_star as visited.
             visited.insert(p_star_index);
 
-            // Limit the number of candidates to max_candidates (L)
-            if (candidates.size() > static_cast<size_t>(max_candidates))
+            // Limit the number of candidates to L.
+            if (candidates.size() > L)
             {
                 // Convert candidates to a vector for sorting
                 std::vector<int> candidate_vector(candidates.begin(), candidates.end());
@@ -438,30 +451,29 @@ public:
                 // Partially sort to find the max_candidates closest to the query point
                 std::nth_element(
                     candidate_vector.begin(),
-                    candidate_vector.begin() + max_candidates,
+                    candidate_vector.begin() + L,
                     candidate_vector.end(),
-                    [this, &query_point](int a, int b)
+                    [this, query_point](int a, int b)
                     {
                         return euclideanDistance(dataset[a].vec, query_point.vec) < euclideanDistance(dataset[b].vec, query_point.vec);
                     });
 
                 // Keep only the first max_candidates elements
                 candidates.clear();
-                candidates.insert(candidate_vector.begin(), candidate_vector.begin() + max_candidates);
+                candidates.insert(candidate_vector.begin(), candidate_vector.begin() + L);
             }
         }
 
         // Find the k nearest neighbors among candidates
         std::vector<int> candidate_vector(candidates.begin(), candidates.end());
-
-        if (candidate_vector.size() > static_cast<size_t>(k))
+        if (candidate_vector.size() > k)
         {
             // Partially sort to get the k closest candidates
             std::nth_element(
                 candidate_vector.begin(),
                 candidate_vector.begin() + k,
                 candidate_vector.end(),
-                [this, &query_point](int a, int b)
+                [this, query_point](int a, int b)
                 {
                     return euclideanDistance(dataset[a].vec, query_point.vec) < euclideanDistance(dataset[b].vec, query_point.vec);
                 });
@@ -489,16 +501,11 @@ public:
      * The N points must already be initialized as a random graph of outgoing edges with maximum of log(N) outgoing edges per point.
      * @param alpha Scaling factor to prune outgoing eges of a node.
      * @param max_candinates Maximum list of search candidates to use in graph traversal.
-     * @param max_neighbors Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
+     * @param R Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
      */
-    void vamanaIndex(float alpha, int max_candinates, int max_neighbors)
+    void vamanaIndex(float alpha, int max_candinates, int R)
     {
-        // Calculating the Mediod of the dataset.
-        // Point mediod = calculateMedoid(dataset);
-        Point medoid = dataset.at(5762);
-        print_verbose("(data.h) (vamanaIndex) Medoid's Index: " + std::to_string(medoid.index) + ".");
-
-        // Generating a vector of randomly shuffled nodes for random insertion in the graph.
+        // Generating a vector of randomly shuffled points for random insertion in the graph.
         std::vector<int> sigma(dataset.size());
         std::iota(sigma.begin(), sigma.end(), 0);
         std::random_device rd;
@@ -522,7 +529,7 @@ public:
             }
 
             // Run robustPrune on current_point with visited indices
-            robustPrune(current_point, visited_indices, alpha, max_neighbors);
+            robustPrune(current_point, visited_indices, alpha, R);
 
             // For each neighbor of current_point
             for (const Edge &edge : current_point.outgoing_edges)
@@ -540,10 +547,10 @@ public:
                 // Add current_point to outgoing neighbors
                 outgoing_indices.insert(current_point.index);
 
-                if (outgoing_indices.size() > static_cast<size_t>(max_neighbors))
+                if (outgoing_indices.size() > static_cast<size_t>(R))
                 {
                     // Run robustPrune on neighbor with outgoing indices
-                    robustPrune(neighbor, outgoing_indices, alpha, max_neighbors);
+                    robustPrune(neighbor, outgoing_indices, alpha, R);
                 }
                 else
                 {

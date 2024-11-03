@@ -12,6 +12,7 @@
 #include "data.h"
 #include "log.h"
 #include "misc.h"
+#include "timer.h"
 #include "validation.h"
 
 #pragma region HELP_MESSAGE
@@ -40,10 +41,12 @@ int main(int argc, char *argv[])
 {
     try
     {
-        // Parsing the arguments.
         std::string conf_filepath;
         float alpha = 0.0f;
         int max_candinates, max_neighbours = 0;
+        Timer timer;
+
+        // Parsing the arguments.
         argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
         cmdl({"-c", "--conf"}) >> conf_filepath;
         cmdl({"-a", "--alpha"}) >> alpha;
@@ -71,22 +74,36 @@ int main(int argc, char *argv[])
         validateFileExists(conf.queries_filepath);
         validateFileExists(conf.evaluation_filepath);
 
-        // Parsing the dataset-images, queries-images and the ground truth NNs.
+        // Parsing the dataset, queries and ground-truth data.
         std::vector<Point> dataset_points = parseFvecsFile(conf.dataset_filepath);
-        print_verbose("(main.cpp) Dataset: " + std::to_string(dataset_points.size()) + " Points.");
+        print_verbose("(main.cpp) Dataset: " + std::to_string(dataset_points.size()) + " Points loaded.");
 
         std::vector<Point> query_points = parseFvecsFile(conf.queries_filepath);
-        print_verbose("(main.cpp) Queries: " + std::to_string(query_points.size()) + " Points.");
+        print_verbose("(main.cpp) Queries: " + std::to_string(query_points.size()) + " Points loaded.");
 
         std::vector<std::vector<int>> evaluation_matrix = parseIvecsFile(conf.evaluation_filepath);
-        print_verbose("(main.cpp) Eval SZ: " + std::to_string(evaluation_matrix.size()) + ".");
+        print_verbose("(main.cpp) Evaluation: " + std::to_string(evaluation_matrix[0].size()) + " Matrices loaded.");
 
-        // Constructing the dataset graph using Vamana indexing.");
+        // Initializing the graph.
         Graph graph = Graph(dataset_points);
-        graph.vamanaIndex(alpha, max_candinates, max_neighbours);
 
-        // verbose("(main.cpp) Constructing the dataset graph using the Vamana algorithm.");
-        // dataset_graph.constructGraphUsingVamana(conf.getVamanaNoNeighbours(), conf.getVamanaNoCandinates());
+        // Calculating the Mediod of the dataset.
+        // graph.calculateMedoid();
+        graph.medoid = dataset.at(5762);
+        print_verbose("(data.h) (vamanaIndex) Medoid's Index: " + std::to_string(graph.medoid.index) + ".");
+
+        // // Constructing the dataset graph using Vamana indexing.
+        // graph.vamanaIndex(alpha, max_candinates, max_neighbours);
+
+        // // Evaluating the algorithm.
+        // GreedySearchResults r;
+        // for (Point q : query_points)
+        // {
+        //     r = graph.greedySearch(graph.medoid, q, max_neighbours, max_candinates);
+        //     r.knn_points[0].printHistogram();
+        //     dataset_points[evaluation_matrix[q.index][0]].printHistogram();
+        //     print_verbose("---");
+        // }
 
         return EXIT_SUCCESS;
     }
