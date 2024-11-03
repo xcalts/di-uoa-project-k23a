@@ -17,7 +17,7 @@ extern bool verbose_enabled;
  * @param message
  * The message to print.
  */
-void verbose(const std::string &message)
+void print_verbose(const std::string &message)
 {
     if (verbose_enabled)
         std::cout << "[Verbose] " << message << std::endl;

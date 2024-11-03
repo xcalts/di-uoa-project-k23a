@@ -4,55 +4,98 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <unordered_set>
+#include <queue>
+#include <limits>
 
 #include "log.h"
 
 /**
- * @brief
- * It represents an `Image` in the form of a `vector` of X dimensions.
- * The data are correspond to the `SIFT` descriptor of the original image.
+ * @brief It represents a directed edge from one node to another with an associated weight.
  */
-class Image
+class Edge
 {
-private:
-    int _dimensions;
-    std::vector<float> _data;
-
 public:
     /**
-     * @brief
-     * Base constructor.
-     *
+     * @brief The index of the `Point` that the `Edge` points to.
      */
-    Image() {}
+    int to_index;
 
     /**
-     * @brief
-     * Construct a new `Image` object.
-     *
-     * @param dimensions
-     * The number of dimensions of the `Image`.
-     *
-     * @param data
-     * The initial data of the `Image`.
+     * @brief The weight of the `Edge`.
      */
-    Image(int dimensions, const std::vector<float> &data)
+    int weight;
+
+    /**
+     * @brief Base constructor.
+     */
+    Edge() {}
+
+    /**
+     * @brief Construct a new `Edge` object.
+     * @param _to_index The index of the `Point` that the `Edge` points to.
+     * @param _weight The weight of the `Edge`.
+     */
+    Edge(int _to_index, int _weight)
     {
-        _dimensions = dimensions;
-        _data = data;
+        to_index = _to_index;
+        weight = _weight;
+    }
+};
+
+/**
+ * @brief It represents a point in the form of a vector of X dimensions.
+ */
+class Point
+{
+public:
+    /**
+     * @brief Unique identifier of the `Point` in the dataset.
+     */
+    int index;
+
+    /**
+     * @brief The dimensions of the `Point` vector.
+     */
+    int dimensions;
+
+    /**
+     * @brief The vector data of the `Point`.
+     */
+    std::vector<float> vec;
+
+    /**
+     * @brief The outgoing edges.
+     */
+    std::vector<Edge> outgoing_edges;
+
+    /**
+     * @brief Base constructor.
+     */
+    Point() {}
+
+    /**
+     * @brief Construct a new `Point` object.
+     * @param idx Unique identifier of the `Point` in the dataset.
+     * @param vector_data The vector data of the `Point`.
+     */
+    Point(int idx, const std::vector<float> &vector_data)
+    {
+        index = idx;
+        dimensions = vector_data.size();
+        vec = vector_data;
     }
 
     /**
-     * @brief
-     * Prints the data vector in a table format.
+     * @brief Prints the data vector in a table format.
      */
     void printTable() const
     {
         std::cout << "[ ";
-        for (size_t i = 0; i < _data.size(); ++i)
+        for (size_t i = 0; i < vec.size(); ++i)
         {
-            std::cout << _data[i];
-            if (i < _data.size() - 1)
+            std::cout << vec[i];
+            if (i < vec.size() - 1)
             {
                 std::cout << ", ";
             }
@@ -61,22 +104,21 @@ public:
     }
 
     /**
-     * @brief
-     * Prints the data vector in a histogram format.
+     * @brief Prints the data vector in a histogram format.
      */
     void printHistogram() const
     {
         const size_t height = 20; // Height of histogram in rows
-        float max_value = *std::max_element(_data.begin(), _data.end());
+        float max_value = *std::max_element(vec.begin(), vec.end());
 
         // Loop over each row from top to bottom
         for (size_t row = height; row > 0; --row)
         {
             float threshold = (static_cast<float>(row) / height) * max_value;
 
-            for (size_t i = 0; i < _data.size(); ++i)
+            for (size_t i = 0; i < vec.size(); ++i)
             {
-                if (_data[i] >= threshold)
+                if (vec[i] >= threshold)
                 {
                     std::cout << "#";
                 }
@@ -89,7 +131,7 @@ public:
         }
 
         // Print the x-axis with index labels
-        for (size_t i = 0; i < _data.size(); ++i)
+        for (size_t i = 0; i < vec.size(); ++i)
         {
             std::cout << "-";
         }
@@ -97,15 +139,13 @@ public:
     }
 
     /**
-     * @brief
-     * Generates a histogram of the data vector as a formatted string.
-     *
+     * @brief Generates a histogram of the data vector as a formatted string.
      * @return std::string
      */
     std::string getHistogram() const
     {
         const size_t height = 20; // Height of histogram in rows
-        float max_value = *std::max_element(_data.begin(), _data.end());
+        float max_value = *std::max_element(vec.begin(), vec.end());
         std::ostringstream oss;
 
         // Loop over each row from top to bottom
@@ -113,9 +153,9 @@ public:
         {
             float threshold = (static_cast<float>(row) / height) * max_value;
 
-            for (size_t i = 0; i < _data.size(); ++i)
+            for (size_t i = 0; i < vec.size(); ++i)
             {
-                if (_data[i] >= threshold)
+                if (vec[i] >= threshold)
                 {
                     oss << ".";
                 }
@@ -128,14 +168,14 @@ public:
         }
 
         // Append the x-axis with index labels
-        for (size_t i = 0; i < _data.size(); ++i)
+        for (size_t i = 0; i < vec.size(); ++i)
         {
             oss << "-";
         }
         oss << "\n";
 
         // Append index labels below the histogram
-        for (size_t i = 0; i < _data.size(); ++i)
+        for (size_t i = 0; i < vec.size(); ++i)
         {
             oss << i % 10; // Single-digit labels for compactness
         }
@@ -146,333 +186,377 @@ public:
 };
 
 /**
- * @brief
- * It represents the in-memory database of `Image` objects.
- * It can either contain the dataset or the queries.
- * It is initialized using a path to a `.fvecs` file.
+ * @brief Calculate the euclidean distance between two vectors `a` and `b`.
+ * @param a The first `vector`.
+ * @param b The second `vector`.
+ * @return float
  */
-class ImageDatabase
+float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b)
 {
-private:
-    std::string _filepath;
-    std::vector<Image> _images;
-    int _total_images;
+    float sum = 0.0f;
 
-    void initialize()
+    for (size_t i = 0; i < a.size(); ++i)
     {
-        verbose("(data.h) Parsing the .fvecs file at: " + _filepath + ".");
-
-        std::ifstream filestream(_filepath, std::ios::binary);
-
-        while (filestream)
-        {
-            int vector_no_dimensions;
-
-            // 1. The first four bytes(int) represent the number of dimensions of the vector data.
-            filestream.read(reinterpret_cast<char *>(&vector_no_dimensions), sizeof(int));
-
-            if (!filestream)
-                break;
-
-            std::vector<float> v(vector_no_dimensions);
-
-            // 2. Read the rest of the values as a vector of size `vector_no_dimensions`.
-            filestream.read(reinterpret_cast<char *>(v.data()), vector_no_dimensions * sizeof(float));
-
-            // 3. Create a new `Image` object.
-            Image new_image = Image(vector_no_dimensions, v);
-
-            // 4. Add it to the database.
-            _images.push_back(new_image);
-        }
-
-        filestream.close();
-
-        _total_images = _images.size();
+        float diff = a[i] - b[i];
+        sum += diff * diff;
     }
 
-public:
-    /**
-     * @brief
-     * Base constructor.
-     *
-     */
-    ImageDatabase() {}
-
-    /**
-     * @brief
-     * Construct a new `ImageDatabase` object.
-     * Note that there are not validation checks for the `filepath`.
-     *
-     * @param fvecspath
-     * The path to the file that contains the `fvecs` vectors dataset.
-     */
-    ImageDatabase(const std::string &fvecspath)
-    {
-        _filepath = fvecspath;
-
-        initialize();
-    }
-
-    /**
-     * @brief
-     * It returns how many images there are in the database.
-     *
-     * @return int
-     */
-    int getTotal()
-    {
-        return _total_images;
-    }
-
-    /**
-     * @brief Get the vector containing the `Image` objects.
-     *
-     * @return std::vector<Image>&
-     */
-    std::vector<Image> &getImages()
-    {
-        return _images;
-    }
-
-    /**
-     * @brief
-     * Get the `Image` object by index
-     * @param index
-     * The index of the desired `Image`.
-     * @return const Image&
-     */
-    const Image &getImage(int index) const
-    {
-        return _images[index];
-    }
-};
+    return std::sqrt(sum);
+}
 
 /**
- * @brief
- * It represents the ground-truth nearest neighbours of an indexed `Image` in the dataset `ImageDatabase`.
+ * @brief Medoids are similar in concept to means or centroids, but medoids are always restricted to be members of the data set.
+ * @param dataset The dataset that you want to find the mediod for.
+ * @return Point&
  */
-class NearestNeighbours
+Point &calculateMedoid(std::vector<Point> &dataset)
 {
-private:
-    int _image_index;
-    int _dimensions;
-    std::vector<int> _neighbours_indexes;
+    int mediod_index;
+    size_t total_points = dataset.size();
+    float minimum = std::numeric_limits<float>::max();
 
-public:
-    /**
-     * @brief
-     * Base constructor.
-     */
-    NearestNeighbours() {}
-
-    /**
-     * @brief
-     * Construct a new `NearestNeighbours` object.
-     *
-     * @param image_index
-     * The index of the image in the `ImageDatabase`, that this class is refering to.
-     * @param dimensions
-     * The dimensions of the `neighbours_indexes` vector.
-     * @param neighbours_indexes
-     * The vector containing the indices of the nearest neighbours.
-     */
-    NearestNeighbours(int image_index, int dimensions, const std::vector<int> &neighbours_indexes)
-    {
-        _image_index = image_index;
-        _dimensions = dimensions;
-        _neighbours_indexes = neighbours_indexes;
-    }
-
-    /**
-     * @brief
-     * Prints the nearest neighbours in a table format.
-     */
-    void printTable() const
-    {
-        std::cout << "[ ";
-        for (size_t i = 0; i < _neighbours_indexes.size(); ++i)
-        {
-            std::cout << _neighbours_indexes[i];
-            if (i < _neighbours_indexes.size() - 1)
+    for (int i = 0; i < total_points; i++)
+        for (int j = 0; j < total_points; j++)
+            if (i != j)
             {
-                std::cout << ", ";
+                Point i_point = dataset[i];
+                Point j_point = dataset[j];
+
+                float distance = euclideanDistance(i_point.vec, j_point.vec);
+
+                if (distance < minimum)
+                {
+                    minimum = distance;
+                    mediod_index = i;
+                }
             }
-        }
-        std::cout << " ]" << std::endl;
-    }
-};
+
+    return dataset[mediod_index];
+}
 
 /**
- * @brief
- * It represents the in-memory database of all `NearestNeighbours` for each and every indexed image in the dataset `ImageDatabase`.
- * It is used for evaluating the KNN search algorithms.
+ * @brief The results of the Greedy Search algorithm.
  */
-class NearestNeighboursDatabase
+struct GreedySearchResults
 {
-private:
-    std::string _filepath;
-    int _dimensions;
-    std::vector<NearestNeighbours> _nns;
-
-    void initialize()
-    {
-        verbose("(data.h) Parsing the .ivecs file at: " + _filepath + ".");
-
-        std::ifstream filestream(_filepath, std::ios::binary);
-        std::vector<std::vector<int>> data;
-        int count = 0;
-
-        while (filestream)
-        {
-            // 1. The first four bytes(int) represent the number of dimensions of the vector data.
-            int dim = 0;
-            filestream.read(reinterpret_cast<char *>(&dim), sizeof(int));
-
-            if (!filestream)
-                break;
-
-            std::vector<int> v(dim);
-
-            // 2. Read the rest of the values as a vector of size `_dimensions`.
-            filestream.read(reinterpret_cast<char *>(v.data()), dim * sizeof(int));
-
-            // 3. Create a new `NearestNeighbours` object.
-            NearestNeighbours new_nn = NearestNeighbours(count, dim, v);
-
-            // 4. Add it to the database.
-            _nns.push_back(new_nn);
-
-            // 5. Increase the idx.
-            count++;
-        }
-
-        filestream.close();
-    }
-
-public:
     /**
-     * @brief
-     * Base constructor.
+     * @brief The k approximate nearest neighbors.
      */
-    NearestNeighboursDatabase() {}
-
+    std::vector<Point> knn_points;
     /**
-     * @brief
-     * Construct a new `NearestNeighboursDatabase` object.
-     * Note that there are not validation checks for the `filepath`.
-     *
-     * @param ivecspath
-     * The path to the file that contains the `ivecs` evaluation vector.
+     * @brief The visited points during the search.
      */
-    NearestNeighboursDatabase(const std::string &ivecspath)
-    {
-        _filepath = ivecspath;
-        initialize();
-    }
-
-    /**
-     * @brief Get the vector containing the `NearestNeighbours` objects.
-     *
-     * @return std::vector<NearestNeighbours>&
-     */
-    std::vector<NearestNeighbours> &getNNs()
-    {
-        return _nns;
-    }
+    std::vector<Point> visited_points;
 };
 
 /**
- * @brief
- * It represents a directed edge from one node to another with an associated weight.
- */
-class Edge
-{
-private:
-    int _to_index;
-    float _weight;
-
-public:
-    /**
-     * @brief
-     * Base constructor.
-     *
-     */
-    Edge() {}
-
-    /**
-     * @brief Construct a new `Edge` object.
-     *
-     * @param to_index
-     * Index of the destination image in the dataset.
-     * @param weight
-     * Weight of the edge.
-     */
-    Edge(int to_index, float weight)
-    {
-        _to_index = to_index;
-        _weight = weight;
-    }
-};
-
-/**
- * @brief
- * It represents the database that controls the nodes and edges of the graph.
+ * @brief Graph.
  */
 class Graph
 {
-private:
-    int _total_nodes;
-    std::vector<std::vector<Edge>> _adjacency_list;
-
 public:
     /**
-     * @brief
-     * Base constructor.
+     * @brief It contains all the points that make up the graph.
+     */
+    std::vector<Point> dataset;
+
+    /**
+     * @brief Base Constructor
      */
     Graph() {}
 
     /**
-     * @brief
-     * Construct a new `Graph` object.
-     * @param images
-     * The vector containing the `Image` dataset.
+     * @brief Construct a new `Graph` object.
+     * @param _dataset The dataset of `Point`s that are inside the `Graph`.
      */
-    Graph(const std::vector<Image> images)
+    Graph(std::vector<Point> _dataset)
     {
-        _total_nodes = images.size();
-        _adjacency_list.resize(_total_nodes);
+        dataset = _dataset;
+    }
+
+    /**
+     * @brief It prunes the list of candidate neighbors for a given source_node based on a pruning condition that involves an alpha scaling factor.
+     * It ensures that the source_node has at most R outgoing edges to its nearest neighbors.
+     * @param source_node The node for which we are pruning the candidate neighbors
+     * @param candidates A set of candidate node indices.
+     * @param alpha A scaling factor used in the pruning condition.
+     * @param R The maximum number of outgoing edges (neighbors) the source_node should have.
+     */
+    void robustPrune(Point &source_node, std::unordered_set<int> &candidates, float alpha, int R)
+    {
+        // Add neighbors of source_node to candidates
+        for (const Edge &edge : source_node.outgoing_edges)
+        {
+            candidates.insert(edge.to_index);
+        }
+
+        // Remove source_node from candidates if present
+        candidates.erase(source_node.index);
+
+        // Clear the current neighbors of source_node
+        source_node.outgoing_edges.clear();
+
+        // Define a lambda function to compute distance to source_node
+        auto distance_to_source_node = [this, &source_node](int p_index) -> float
+        {
+            return euclideanDistance(dataset[p_index].vec, source_node.vec);
+        };
+
+        while (!candidates.empty())
+        {
+            // Find p_star: the candidate closest to source_node
+            int p_star_index = -1;
+            float min_distance = std::numeric_limits<float>::max();
+
+            for (int c : candidates)
+            {
+                float distance = distance_to_source_node(c);
+                if (distance < min_distance)
+                {
+                    min_distance = distance;
+                    p_star_index = c;
+                }
+            }
+
+            // Safeguard in case p_star_index wasn't set
+            if (p_star_index == -1)
+                break;
+
+            // Get current neighbors of source_node
+            std::unordered_set<int> new_neighbors_indices;
+            for (const Edge &edge : source_node.outgoing_edges)
+            {
+                new_neighbors_indices.insert(edge.to_index);
+            }
+
+            // Add p_star to new_neighbors
+            new_neighbors_indices.insert(p_star_index);
+
+            // Update the neighbors of source_node
+            source_node.outgoing_edges.clear();
+            for (int idx : new_neighbors_indices)
+            {
+                // Assuming the weight is the Euclidean distance
+                float weight = euclideanDistance(source_node.vec, dataset[idx].vec);
+                source_node.outgoing_edges.push_back(Edge(idx, weight));
+            }
+
+            // If the desired number of neighbors is reached, exit the loop
+            if (new_neighbors_indices.size() == static_cast<size_t>(R))
+                break;
+
+            // Remove p_star from candidates
+            candidates.erase(p_star_index);
+
+            // Prepare to remove nodes from candidates based on the pruning condition
+            std::vector<int> to_remove;
+            for (int other_index : candidates)
+            {
+                float distance_p_star_other = euclideanDistance(dataset[p_star_index].vec, dataset[other_index].vec);
+                float distance_source_other = euclideanDistance(source_node.vec, dataset[other_index].vec);
+
+                // Prune candidates using the alpha scaling factor
+                if (alpha * distance_p_star_other <= distance_source_other)
+                {
+                    to_remove.push_back(other_index);
+                }
+            }
+
+            // Remove the pruned nodes from candidates
+            for (int idx : to_remove)
+            {
+                candidates.erase(idx);
+            }
+        }
     }
 
     /**
      * @brief
-     * Add a directed edge with a weight.
-     * @param from_index
-     * The source node index.
-     * @param to_index
-     * The destination node index.
-     * @param weight
-     * The weight of the edge.
+     *
+     * @param source_point
+     * @param query_point
+     * @param k
+     * @param max_candinates
+     * @return GreedySearchResults
      */
-    void addEdge(int from_index, int to_index, float weight)
+    GreedySearchResults greedySearch(Point &source_point, Point &query_point, int k, int max_candidates)
     {
-        if (from_index >= 0 && from_index < _adjacency_list.size())
-            _adjacency_list[from_index].push_back(Edge(to_index, weight));
-        else
-            throw std::runtime_error("Invalid from_index: " + from_index);
+        GreedySearchResults results;
+        std::unordered_set<int> candidates; // Set of candidate indices
+        std::unordered_set<int> visited;    // Set of visited indices
+
+        // Initialize candidates with the source point's index
+        candidates.insert(source_point.index);
+
+        while (true)
+        {
+            // Find unvisited candidates (candidates - visited)
+            std::unordered_set<int> unvisited_candidates;
+            for (int c : candidates)
+            {
+                if (visited.find(c) == visited.end())
+                    unvisited_candidates.insert(c);
+            }
+
+            // Exit if there are no unvisited candidates
+            if (unvisited_candidates.empty())
+                break;
+
+            // Find the candidate with the minimum distance to the query point
+            int p_star_index = -1;
+            float min_distance = std::numeric_limits<float>::max();
+
+            for (int c : unvisited_candidates)
+            {
+                float distance = euclideanDistance(dataset[c].vec, query_point.vec);
+                if (distance < min_distance)
+                {
+                    min_distance = distance;
+                    p_star_index = c;
+                }
+            }
+
+            // Safeguard in case p_star_index wasn't set
+            if (p_star_index == -1)
+                break;
+
+            // Add neighbors of p_star to candidates
+            for (Edge &edge : dataset[p_star_index].outgoing_edges)
+            {
+                candidates.insert(edge.to_index);
+            }
+
+            // Mark p_star as visited
+            visited.insert(p_star_index);
+
+            // Limit the number of candidates to max_candidates (L)
+            if (candidates.size() > static_cast<size_t>(max_candidates))
+            {
+                // Convert candidates to a vector for sorting
+                std::vector<int> candidate_vector(candidates.begin(), candidates.end());
+
+                // Partially sort to find the max_candidates closest to the query point
+                std::nth_element(
+                    candidate_vector.begin(),
+                    candidate_vector.begin() + max_candidates,
+                    candidate_vector.end(),
+                    [this, &query_point](int a, int b)
+                    {
+                        return euclideanDistance(dataset[a].vec, query_point.vec) < euclideanDistance(dataset[b].vec, query_point.vec);
+                    });
+
+                // Keep only the first max_candidates elements
+                candidates.clear();
+                candidates.insert(candidate_vector.begin(), candidate_vector.begin() + max_candidates);
+            }
+        }
+
+        // Find the k nearest neighbors among candidates
+        std::vector<int> candidate_vector(candidates.begin(), candidates.end());
+
+        if (candidate_vector.size() > static_cast<size_t>(k))
+        {
+            // Partially sort to get the k closest candidates
+            std::nth_element(
+                candidate_vector.begin(),
+                candidate_vector.begin() + k,
+                candidate_vector.end(),
+                [this, &query_point](int a, int b)
+                {
+                    return euclideanDistance(dataset[a].vec, query_point.vec) < euclideanDistance(dataset[b].vec, query_point.vec);
+                });
+
+            candidate_vector.resize(k);
+        }
+
+        // Fill the knn_points with the k nearest neighbors
+        for (int idx : candidate_vector)
+        {
+            results.knn_points.push_back(dataset[idx]);
+        }
+
+        // Fill the visited_points
+        for (int idx : visited)
+        {
+            results.visited_points.push_back(dataset[idx]);
+        }
+
+        return results;
     }
 
     /**
-     * @brief
-     * Get the `Edges` object of specified node.
-     * @param index
-     * The index of the desired node.
-     * @return const std::vector<Edge>&
+     * @brief Creates an in-memory index on the supplied points to efficiently answer approximate nearest neighbor queries.
+     * The N points must already be initialized as a random graph of outgoing edges with maximum of log(N) outgoing edges per point.
+     * @param alpha Scaling factor to prune outgoing eges of a node.
+     * @param max_candinates Maximum list of search candidates to use in graph traversal.
+     * @param max_neighbors Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
      */
-    const std::vector<Edge> &getEdges(int index) const
+    void vamanaIndex(float alpha, int max_candinates, int max_neighbors)
     {
-        return _adjacency_list[index];
+        // Calculating the Mediod of the dataset.
+        // Point mediod = calculateMedoid(dataset);
+        Point medoid = dataset.at(5762);
+        print_verbose("(data.h) (vamanaIndex) Medoid's Index: " + std::to_string(medoid.index) + ".");
+
+        // Generating a vector of randomly shuffled nodes for random insertion in the graph.
+        std::vector<int> sigma(dataset.size());
+        std::iota(sigma.begin(), sigma.end(), 0);
+        std::random_device rd;
+        std::mt19937 g(rd()); // Mersenne Twister engine seeded with rd()
+        std::shuffle(sigma.begin(), sigma.end(), g);
+
+        // Iterating through each and every dataset point.
+        for (int i = 0; i < dataset.size(); ++i)
+        {
+            int sigma_idx = sigma[i];
+            Point &current_point = dataset[sigma_idx];
+
+            // Perform greedy search from medoid to current_point
+            GreedySearchResults search_results = greedySearch(medoid, current_point, 1, max_candinates);
+
+            // Convert visited_points to a set of indices
+            std::unordered_set<int> visited_indices;
+            for (const Point &p : search_results.visited_points)
+            {
+                visited_indices.insert(p.index);
+            }
+
+            // Run robustPrune on current_point with visited indices
+            robustPrune(current_point, visited_indices, alpha, max_neighbors);
+
+            // For each neighbor of current_point
+            for (const Edge &edge : current_point.outgoing_edges)
+            {
+                int neighbor_idx = edge.to_index;
+                Point &neighbor = dataset[neighbor_idx];
+
+                // Get outgoing neighbors of neighbor
+                std::unordered_set<int> outgoing_indices;
+                for (const Edge &e : neighbor.outgoing_edges)
+                {
+                    outgoing_indices.insert(e.to_index);
+                }
+
+                // Add current_point to outgoing neighbors
+                outgoing_indices.insert(current_point.index);
+
+                if (outgoing_indices.size() > static_cast<size_t>(max_neighbors))
+                {
+                    // Run robustPrune on neighbor with outgoing indices
+                    robustPrune(neighbor, outgoing_indices, alpha, max_neighbors);
+                }
+                else
+                {
+                    // Set neighbors of neighbor to outgoing_indices
+                    neighbor.outgoing_edges.clear();
+                    for (int idx : outgoing_indices)
+                    {
+                        float weight = euclideanDistance(neighbor.vec, dataset[idx].vec);
+                        neighbor.outgoing_edges.push_back(Edge(idx, weight));
+                    }
+                }
+            }
+        }
     }
 };
-
 #endif // DATA_H

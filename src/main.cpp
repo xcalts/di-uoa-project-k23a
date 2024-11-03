@@ -1,4 +1,5 @@
 #include <iostream>
+#include <vector>
 
 /* https://github.com/adishavit/argh */
 #include "argh.h"
@@ -10,6 +11,7 @@
 #include "conf.h"
 #include "data.h"
 #include "log.h"
+#include "misc.h"
 #include "validation.h"
 
 #pragma region HELP_MESSAGE
@@ -22,10 +24,6 @@ K23a [options]
 Options:
 -h, --help                       Print the help message.
 -c, --conf <conf_filepath>       The filepath to the YAML configuration file.
--d, --dataset <dataset_filepath> The filepath to the FVECS dataset of image vectors.
--q, --queries <queries_filepath> The filepath to the FVECS queries of image vectors.
--e, --eval <eval_filepath>       The filepath to the IVECS evaluation metrics.
---verbose                        Enable verbose debug output.
 
 Description:
 =TBD=
@@ -42,44 +40,55 @@ int main(int argc, char *argv[])
 {
     try
     {
+        // Parsing the arguments.
         std::string conf_filepath;
-        std::string dataset_filepath;
-        std::string queries_filepath;
-        std::string evaluation_filepath;
-        Configuration conf;
-
+        float alpha = 0.0f;
+        int max_candinates, max_neighbours = 0;
         argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
-        verbose_enabled = cmdl["--verbose"] ? true : false;
-
-        verbose("(main.cpp) Parsing the arguments.");
         cmdl({"-c", "--conf"}) >> conf_filepath;
-        cmdl({"-d", "--dataset"}) >> dataset_filepath;
-        cmdl({"-q", "--queries"}) >> queries_filepath;
-        cmdl({"-e", "--evaluation"}) >> evaluation_filepath;
+        cmdl({"-a", "--alpha"}) >> alpha;
+        cmdl({"-l", "--max-candinates"}) >> max_candinates;
+        cmdl({"-n", "--max-neighbors"}) >> max_neighbours;
 
-        verbose("(main.cpp) Printing the help message, if user does not pass enough arguments.");
-        if (cmdl({"-h", "--help"}) || conf_filepath.empty() || dataset_filepath.empty() || queries_filepath.empty() || evaluation_filepath.empty())
+        // Printing the help message, if user does not pass enough arguments.
+        if (cmdl({"-h", "--help"}) || conf_filepath.empty() || alpha == 0 || max_candinates == 0 || max_neighbours == 0)
         {
             std::cout << help_msg << std::endl;
             return EXIT_FAILURE;
         }
 
-        verbose("(main.cpp) Validating the parsed arguments.");
+        // Validating the parsed arguments.
         validateFileExists(conf_filepath);
-        validateFileExists(dataset_filepath);
-        validateFileExists(queries_filepath);
-        validateFileExists(evaluation_filepath);
 
-        verbose("(main.cpp) Parsing the YAML configuration file.");
-        conf = Configuration(conf_filepath);
+        // Parsing the YAML configuration file.
+        Configuration conf = Configuration(conf_filepath);
 
-        verbose("(main.cpp) Parsing the dataset-images, queries-images and the ground truth NNs.");
-        ImageDatabase dataset = ImageDatabase(dataset_filepath);
-        ImageDatabase queries = ImageDatabase(queries_filepath);
-        NearestNeighboursDatabase nn = NearestNeighboursDatabase(evaluation_filepath);
+        // Deciding whether to prinf verbose messages or not.
+        verbose_enabled = conf.verbose;
 
-        verbose("(main.cpp) Initializing the dataset graph.");
-        Graph dataset_graph = Graph(dataset.getImages());
+        // Validating the configuration.
+        validateFileExists(conf.dataset_filepath);
+        validateFileExists(conf.queries_filepath);
+        validateFileExists(conf.evaluation_filepath);
+
+        // Parsing the dataset-images, queries-images and the ground truth NNs.
+        std::vector<Point> dataset_points = parseFvecsFile(conf.dataset_filepath);
+        print_verbose("(main.cpp) Dataset: " + std::to_string(dataset_points.size()) + " Points.");
+
+        std::vector<Point> query_points = parseFvecsFile(conf.queries_filepath);
+        print_verbose("(main.cpp) Queries: " + std::to_string(query_points.size()) + " Points.");
+
+        std::vector<std::vector<int>> evaluation_matrix = parseIvecsFile(conf.evaluation_filepath);
+        print_verbose("(main.cpp) Eval SZ: " + std::to_string(evaluation_matrix.size()) + ".");
+
+        // Constructing the dataset graph using Vamana indexing.");
+        Graph graph = Graph(dataset_points);
+        graph.vamanaIndex(alpha, max_candinates, max_neighbours);
+
+        // verbose("(main.cpp) Constructing the dataset graph using the Vamana algorithm.");
+        // dataset_graph.constructGraphUsingVamana(conf.getVamanaNoNeighbours(), conf.getVamanaNoCandinates());
+
+        return EXIT_SUCCESS;
     }
     catch (const std::runtime_error &e)
     {

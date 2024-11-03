@@ -5,8 +5,8 @@ siftsmall/
 out/
 
 # Ignore build
-bin/*
-obj/*
+bin/
+obj/
 
 # Prerequisites
 *.d

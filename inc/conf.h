@@ -9,18 +9,11 @@
 #include "log.h"
 
 /**
- * @brief
- * This class controls all the configuration logic. It is used to parse a YAML configuration file,
- * and exports its parameters as part of its public interface.
- *
+ * @brief This class controls all the configuration logic.
  */
 class Configuration
 {
 private:
-    std::string _filepath;
-    std::string _contents;
-    int _no_queries;
-
     /**
      * @brief
      * This functions initializes the `Configuration` object.
@@ -33,46 +26,64 @@ private:
      */
     void initialize(const std::string &filepath)
     {
-        _filepath = filepath;
-        _contents = readFileContents(filepath);
+        std::string _contents = readFileContents(filepath);
 
-        verbose("(conf.h) Initializing the YAML tree.");
+        print_verbose("(conf.h) Initializing the YAML tree.");
         ryml::Tree tree = ryml::parse_in_place(ryml::to_substr(_contents));
         ryml::ConstNodeRef root = tree.rootref();
 
-        verbose("(conf.h) Deserializing the YAML tree into the configuration parameters.");
-        root["no_queries"] >> _no_queries;
+        print_verbose("(conf.h) Deserializing the YAML tree into the configuration parameters.");
+        root["no_queries"] >> no_queries;
+        root["dataset_filepath"] >> dataset_filepath;
+        root["queries_filepath"] >> queries_filepath;
+        root["evaluation_filepath"] >> evaluation_filepath;
+        root["verbose"] >> verbose;
+
+        print_verbose("(conf.h) no_queries: " + std::to_string(no_queries));
+        print_verbose("(conf.h) dataset_filepath: " + dataset_filepath);
+        print_verbose("(conf.h) queries_filepath: " + queries_filepath);
+        print_verbose("(conf.h) evaluation_filepath: " + evaluation_filepath);
+        print_verbose("(conf.h) verbose: " + std::to_string(verbose));
     }
 
 public:
     /**
-     * @brief
-     * Base contructor.
-     *
+     * @brief The number of queries to calculate results for.
+     */
+    int no_queries;
+
+    /**
+     * @brief The filepath to the FVECS dataset of image vectors.
+     */
+    std::string dataset_filepath;
+
+    /**
+     * @brief The filepath to the FVECS queries of image vectors.
+     */
+    std::string queries_filepath;
+
+    /**
+     * @brief The filepath to the IVECS evaluation metrics.
+     */
+    std::string evaluation_filepath;
+
+    /**
+     * @brief Whether to print `verbose` debug messages or not.
+     */
+    bool verbose;
+
+    /**
+     * @brief Base contructor.
      */
     Configuration() {}
 
     /**
-     * @brief
-     * Construct a new `Configuration` object.
-     * Note that there are no validation checks for the `filepath`.
-     *
-     * @param filepath
-     * The path to the YAML configuration file.
+     * @brief Construct a new `Configuration` object.
+     * @param filepath The path to the YAML configuration file.
      */
     Configuration(const std::string &filepath)
     {
         initialize(filepath);
-    }
-
-    /**
-     * @brief Get the number of queries that results will be calculated for.
-     *
-     * @return int
-     */
-    int getNoQueries()
-    {
-        return _no_queries;
     }
 };
 
