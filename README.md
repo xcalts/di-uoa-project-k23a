@@ -11,13 +11,14 @@
 To compile the program just run the following:
 
 ```sh
-> make
+> make debug
+> make release  
 ```
 
 ## Examples
 
 ```sh
-> ./bin/k23a -c ./conf.yaml -a 1 -l 10 -n 10
+> ./bin/k23a -c ./conf.yaml -a 1 -L 10 -R 10 -k 10
 ```
 
 ## Folder Structure

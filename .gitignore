@@ -3,6 +3,7 @@ siftsmall/
 
 # Ignore output
 out/
+logs.txt
 
 # Ignore build
 bin/
