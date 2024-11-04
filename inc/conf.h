@@ -5,8 +5,6 @@
 
 #include "rapidyaml.h"
 
-#include "misc.h"
-
 /**
  * @brief This class controls all the configuration logic.
  */
