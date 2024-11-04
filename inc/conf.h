@@ -4,6 +4,7 @@
 #include <string>
 
 #include "rapidyaml.h"
+#include "vamana.h"
 
 /**
  * @brief This class controls all the configuration logic.

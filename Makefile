@@ -16,7 +16,7 @@ TEST_SOURCES = $(wildcard $(TESTS_SRC_DIR)/*.cpp)
 T_OBJ_DIR = test_obj
 TEST_OBJECTS = $(patsubst $(TESTS_SRC_DIR)/%.cpp, $(T_OBJ_DIR)/%.o, $(TEST_SOURCES))
 
-TARGETS = k23a unitests
+TARGETS = clean k23a unitests
 
 all: $(TARGETS)
 
