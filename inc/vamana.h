@@ -1,5 +1,5 @@
-#ifndef DATA_H
-#define DATA_H
+#ifndef VAMANA_H
+#define VAMANA_H
 
 #include <iostream>
 #include <fstream>
@@ -897,4 +897,4 @@ std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
     return ground_truth;
 }
 
-#endif // DATA_H
+#endif // VAMANA_H
