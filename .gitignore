@@ -8,6 +8,7 @@ logs.txt
 # Ignore build
 bin/
 obj/
+test_obj/
 
 # Prerequisites
 *.d

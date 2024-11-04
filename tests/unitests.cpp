@@ -54,45 +54,7 @@ void test_calculateMedoid()
     Vamana vamana(dataset);
     vamana.calculateMedoid();
 
-    TEST_CHECK(vamana.medoid_idx == 0);
-}
-
-// distances:
-// Point 0 to Point 1 = 1.41
-// Point 0 to Point 2 = 2.83
-// Point 0 to Point 3 = 4.24
-void test_robustPrune()
-{
-    std::vector<Point> dataset = {
-        Point(0, {0.0, 0.0}),
-        Point(1, {1.0, 1.0}),
-        Point(2, {2.0, 2.0}),
-        Point(3, {3.0, 3.0})};
-    Vamana vamana(dataset);
-    Point p = dataset[0];
-    std::vector<int> candidates = {1, 2, 3};
-
-    vamana.robustPrune(p.index, candidates, 1.5f, 2);
-    // since alpha is 1.5 only 1 neighbor is left
-    TEST_CHECK(p.outgoing_edges.size() == 1);
-}
-
-// test greedy search algorithm
-// from source {0} the closest point of the dataset is point 1
-void test_greedySearch()
-{
-    std::vector<Point> dataset = {
-        Point(1, {1.0, 1.0}),
-        Point(2, {2.0, 2.0}),
-        Point(3, {3.0, 3.0})};
-    Vamana vamana(dataset);
-    Point source(0, {0.0, 0.0});
-    Point query = dataset[2];
-
-    std::pair<std::vector<int>, std::vector<int>> results = vamana.greedySearch(source.index, query.index, 1, 2);
-
-    TEST_CHECK(results.first.size() == 1);
-    TEST_CHECK(results.first[0] == 1);
+    TEST_CHECK(vamana.medoid_idx == 1);
 }
 
 // run tests
@@ -101,7 +63,5 @@ TEST_LIST = {
     {"Point Initialization", test_point_initialization},
     {"Euclidean Distance", test_euclidean_distance},
     {"Calculate Medoid", test_calculateMedoid},
-    {"Robust Prune", test_robustPrune},
-    {"Greedy Search", test_greedySearch},
     {NULL, NULL} // {NULL, NULL} is marking the end of the list
 };

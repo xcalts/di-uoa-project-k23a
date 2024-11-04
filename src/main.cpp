@@ -90,8 +90,8 @@ int main(int argc, char *argv[])
 
         // Calculating the medoid of the dataset.
         sw.reset();
-        // vamana.calculateMedoid();
-        vamana.medoid_idx = 8736;
+        vamana.calculateMedoid();
+        // vamana.medoid_idx = 8736;
         spdlog::info("Medoid Calculation: @{} ({} seconds)", vamana.medoid_idx, sw);
 
         // Indexing the graph using the Vamana algorithm.

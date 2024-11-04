@@ -1,59 +1,55 @@
-# Makefile
-
 CXX = g++
 CXXFLAGS = -std=c++14 -I./inc -I./libs
 
+BIN_DIR = bin
+
 SRC_DIR = src
 SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
-
 OBJ_DIR = obj
-BIN_DIR = bin
 OBJECTS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SOURCES))
-TEST_OBJECTS = $(patsubst $(TESTS_SRC_DIR)/%.cpp, $(TEST_OBJ_DIR)/%.o, $(TEST_SOURCES))
+
+# Exclude main.o for unit tests
+OBJECTS_NO_MAIN = $(filter-out $(OBJ_DIR)/main.o, $(OBJECTS))
 
 TESTS_SRC_DIR = tests
 TEST_SOURCES = $(wildcard $(TESTS_SRC_DIR)/*.cpp)
+T_OBJ_DIR = test_obj
+TEST_OBJECTS = $(patsubst $(TESTS_SRC_DIR)/%.cpp, $(T_OBJ_DIR)/%.o, $(TEST_SOURCES))
 
-TARGETS = clean build k23a unitests
-
+TARGETS = k23a unitests
 
 all: $(TARGETS)
 
-# rule to compile the test .cpp files into .o files
-$(OBJ_DIR)/%.o: $(TESTS_SRC_DIR)/%.cpp
+# Compile test source files into object files
+$(T_OBJ_DIR)/%.o: $(TESTS_SRC_DIR)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-
-# rule to compile .cpp files into .o files
+# Compile main source files into object files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# rule to build the program
-k23a: $(OBJECTS)
-	@mkdir -p $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $(OBJECTS) -o $(BIN_DIR)/$@
+k23a: $(BIN_DIR)/k23a
 
-# rule to build unit tests
-unitests: $(OBJECTS) $(TEST_OBJECTS)
-	@mkdir -p $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $(OBJECTS) $(TEST_OBJECTS) -o $(BIN_DIR)/$@
+$(BIN_DIR)/k23a: $(OBJECTS)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(OBJECTS) -o $@
 
+unitests: $(BIN_DIR)/unitests
 
-# rule for debug
+# Link unit tests executable without main.o
+$(BIN_DIR)/unitests: $(OBJECTS_NO_MAIN) $(TEST_OBJECTS)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(OBJECTS_NO_MAIN) $(TEST_OBJECTS) -o $@
+
 debug: CXXFLAGS += -DDEBUG -g
 debug: all
 
-# rule for release
 release: CXXFLAGS += -O3 -march=native -ffast-math
 release: all
 
-build:
-	@mkdir -p $(BIN_DIR)
-	@mkdir -p $(OBJ_DIR)
-
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR) logs.txt
+	rm -rf $(OBJ_DIR) $(T_OBJ_DIR) $(BIN_DIR) logs.txt
 
-.PHONY: all clean
+.PHONY: all clean k23a unitests debug release
