@@ -125,8 +125,9 @@ int main(int argc, char *argv[])
             }
 
             kNNs = vamana.greedySearchNearestNeighbors(vamana.medoid_idx, q, k, L);
+            std::vector<int> gt_k(ground_truth[idx].begin(), ground_truth[idx].begin() + k);
 
-            total += intersectionSize(kNNs, ground_truth[idx]);
+            total += intersectionSize(kNNs, gt_k);
         }
 
         // Calculate recall percentage.

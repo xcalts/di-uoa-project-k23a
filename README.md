@@ -15,9 +15,11 @@ To compile the program just run the following:
 > make release  
 ```
 
-## Examples
+## Getting Started
 
 ```sh
+> tar xf siftsmall.tar.gz
+> make release
 > ./bin/k23a -c ./conf.yaml -a 1 -L 10 -R 10 -k 10
 ```
 
