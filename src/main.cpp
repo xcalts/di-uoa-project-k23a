@@ -12,31 +12,8 @@
 #include "spdlog/stopwatch.h"
 
 #include "conf.h"
+#include "misc.h"
 #include "vamana.h"
-
-#pragma region HELP_MESSAGE
-const char *help_msg = R"""(
-K23a features the Vamana Indexing algorithm.
-
-Usage:
-K23a [options]
-
-Options:
--h, --help                     Print the help message.
--c, --conf VALUE               The filepath to the YAML configuration file.
--k, --nearest-neighbors VALUE  Number of nearest neighbors to find.
--a, --alpha VALUE              Scaling factor to prune outgoing eges of a node (alpha).
--L, --max-candinates VALUE     Maximum list of search candidates to use in graph traversal.
--R, --max-edges VALUE          Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
-
-Description:
-=TBD=
-
-Example Usage:
-./bin/k23a -c ./conf.yaml -a 1 -L 10 -R 10 -k 10
-
-)""";
-#pragma endregion
 
 int main(int argc, char *argv[])
 {
@@ -53,14 +30,10 @@ int main(int argc, char *argv[])
         // Parsing the arguments.
         argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
         cmdl({"-c", "--conf"}) >> conf_filepath;
-        cmdl({"-k", "--nearest-neighbors"}) >> k;
-        cmdl({"-a", "--alpha"}) >> a;
-        cmdl({"-L", "--max-candinates"}) >> L;
-        cmdl({"-R", "--max-edges"}) >> R;
 
-        if (cmdl({"-h", "--help"}) || conf_filepath.empty() || (k < 1 || k > 100) || (a < 1 || a > 10) || (L < 1 || L > 300) || (R < 1 || R > 300))
+        if (cmdl({"-h", "--help"}) || argc == 1)
         {
-            std::cout << help_msg << std::endl;
+            std::cout << "Usage: ./k23a --conf ./conf.yaml" << std::endl;
             return EXIT_FAILURE;
         }
 
@@ -95,7 +68,7 @@ int main(int argc, char *argv[])
 
         // Indexing the graph using the Vamana algorithm.
         sw.reset();
-        vamana.index(a, L, R);
+        vamana.index(conf.alpha, conf.max_candinates, conf.max_edges);
         spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] %^[%l]%$ %v");
         spdlog::info("Vamana Indexing: {} seconds.", sw);
 

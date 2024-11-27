@@ -10,86 +10,11 @@
 #include <numeric>
 #include <string>
 
-
 #include <assert.h>
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
-
-/**
- * @brief
- * Setup file and console logging.
- */
-void setupLogging()
-{
-    // Setup two sinks: console & file.
-    std::vector<spdlog::sink_ptr> sinks{
-        std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-        std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs.txt"),
-    };
-
-    // Create a logger to use those two sinks.
-    auto spd_logger = std::make_shared<spdlog::logger>("combined_logger", begin(sinks), end(sinks));
-    spdlog::register_logger(spd_logger);
-
-    // Set it up as the default logger.
-    spdlog::set_default_logger(spd_logger);
-
-    // Change the 'printing' pattern.
-    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] %^[%l]%$ %v");
-}
-
-/**
- * @brief
- * If the `-DDEBUG` flag is passed to the compiler, then this function will output debug messages.
- * @param location
- * The location in the code where the debug message is being printed.
- * @param message
- * The message to print.
- */
-void debug(const std::string &location, const std::string &message)
-{
-#ifdef DEBUG
-    std::cout << location << " - " << message << std::endl;
-#endif
-}
-
-/**
- * @brief
- * This function reads the contents of the file at `filePath`.
- * Note that the function does not perform validation checks.
- *
- * @param filePath
- * The filepath to the file that will be parsed.
- *
- * @return std::string
- */
-std::string readFileContents(const std::string &filePath)
-{
-    std::ifstream file(filePath);
-    std::stringstream buffer;
-
-    buffer << file.rdbuf();
-
-    return buffer.str();
-}
-
-/**
- * @brief
- * This function validates whether the file at the provided `filepath` exists or not.
- * If it does not exist, then it raises a `std::runtime_error`.
- * @param filepath
- * The filepath to the file in question.
- */
-void validateFileExists(const std::string &filepath)
-{
-    struct stat buffer;
-    int fileExists = (stat(filepath.c_str(), &buffer) == 0);
-
-    if (fileExists == 0)
-        throw std::runtime_error("There is no existing file at: " + filepath);
-}
 
 /**
  * @brief
@@ -237,13 +162,13 @@ public:
 
     /**
      * @brief Query type for hybrid vector queries.
-     * 
+     *
      * If 0: Vector-only query.
-     * 
+     *
      * If 1: Query with categorical constraint ( C = v ).
-     * 
+     *
      * If 2: Query with timestamp range ( l <= T <= r ).
-     * 
+     *
      * If 3: Query with both constraints ( C = v ) and ( l <= T <= r ).
      */
     int query_type;
@@ -280,8 +205,7 @@ public:
      * @brief The outgoing edges.
      */
     std::vector<Edge> outgoing_edges;
-        
-    
+
     /**
      * @brief Construct a new `Point` object.
      * @param idx Unique identifier of the `Point` in the dataset.
@@ -302,7 +226,7 @@ public:
         upper_timestamp = upper;
     }
 
-        /**
+    /**
      * @brief Construct a new `Point` simplified object.
      * @param idx Unique identifier of the `Point` in the dataset.
      * @param vector_data The vector data of the `Point`.
@@ -317,8 +241,6 @@ public:
         lower_timestamp = -1;
         upper_timestamp = -1;
     }
-
-
 
     /**
      * @brief Add a new neighbor/edge to this `Point`.
@@ -470,7 +392,7 @@ public:
      * @brief
      * The number of `Point` in the `dataset`.
      */
-    int dataset_size , queryset_size ;
+    int dataset_size, queryset_size;
 
     /**
      * @brief
@@ -490,7 +412,7 @@ public:
         dataset_size = _dataset.size();
     }
 
-     /**
+    /**
      * @brief
      * Construct a new `Vamana` object.
      * @param _dataset
@@ -498,14 +420,13 @@ public:
      * @param _queryset
      * The queries set.
      */
-    Vamana(std::vector<Point> &_dataset , std::vector<Point> &_queryset)
+    Vamana(std::vector<Point> &_dataset, std::vector<Point> &_queryset)
     {
         dataset = _dataset;
         dataset_size = _dataset.size();
         queryset = _queryset;
         dataset_size = _queryset.size();
     }
-
 
     /**
      * @brief
@@ -701,7 +622,6 @@ public:
         return std::make_pair(L, V);
     }
 
-
     /**
      * @brief
      * Checks filters between to Points search algorithm.
@@ -712,24 +632,28 @@ public:
      * @return A true or false value is returned :
      * 1 if the points are compatible or  0 if they are not compatible
      */
-    int check_filters(Point &p ,Point &q){
-        int compatible = 0 ;
+    int check_filters(Point &p, Point &q)
+    {
+        int compatible = 0;
 
-        if (q.query_type == 0){
-            compatible = 1 ;
+        if (q.query_type == 0)
+        {
+            compatible = 1;
         }
-        else if (q.query_type == 1 && p.category == q.category){
-            compatible = 1 ;
+        else if (q.query_type == 1 && p.category == q.category)
+        {
+            compatible = 1;
         }
-        else if (q.query_type == 2 && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp ){
-            compatible = 1 ;
+        else if (q.query_type == 2 && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp)
+        {
+            compatible = 1;
         }
-        else if (q.query_type == 3 && p.category == q.category && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp ){
-            compatible = 1 ;
+        else if (q.query_type == 3 && p.category == q.category && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp)
+        {
+            compatible = 1;
         }
-        return compatible ; 
+        return compatible;
     }
-
 
     /**
      * @brief
@@ -1017,8 +941,6 @@ std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
     return ground_truth;
 }
 
-
-
 /**
  * @brief
  * Parse a `bin` file  dummy-queries.
@@ -1028,10 +950,10 @@ std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
  * The dimensions of each point
  * @return std::vector<Point>
  */
-std::vector<Point> parse_query_file(const std::string &file_path, const int num_dimensions) {
+std::vector<Point> parse_query_file(const std::string &file_path, const int num_dimensions)
+{
 
     std::cout << "Reading Data: " << file_path << std::endl;
-
 
     // Opening the file
     std::ifstream ifs;
@@ -1039,26 +961,24 @@ std::vector<Point> parse_query_file(const std::string &file_path, const int num_
     assert(ifs.is_open());
 
     // 1. The first four bytes(int) represent the number of points in the file.
-    uint32_t N;  // num of points
+    uint32_t N; // num of points
     ifs.read((char *)&N, sizeof(uint32_t));
-
 
     std::cout << "# of points: " << N << std::endl;
 
     // vector that consists all points
     std::vector<Point> points;
-    //points.reserve(N); // reserve space for the points it is optional
-
+    // points.reserve(N); // reserve space for the points it is optional
 
     // buffer for reading each point
     std::vector<float> buff(num_dimensions);
-    
-
 
     // 2. Read and parse each point
-    for (int idx = 0; idx < N; ++idx) {
+    for (int idx = 0; idx < N; ++idx)
+    {
         // 3. Read point and store it in buff
-        if (!ifs.read(reinterpret_cast<char *>(buff.data()), num_dimensions * sizeof(float))) {
+        if (!ifs.read(reinterpret_cast<char *>(buff.data()), num_dimensions * sizeof(float)))
+        {
             std::cerr << "Error reading point data at index " << idx << std::endl;
             break;
         }
@@ -1073,11 +993,9 @@ std::vector<Point> parse_query_file(const std::string &file_path, const int num_
         std::vector<float> row(buff.begin() + 4, buff.end());
 
         // 6. Create a new Point object.
-        Point new_point = Point(idx, row , q_type , category , lower , upper);
+        Point new_point = Point(idx, row, q_type, category, lower, upper);
         // 7. Add it to the database.
         points.push_back(new_point);
-       
-
     }
     // 8. Close file and return the database
     ifs.close();
@@ -1085,8 +1003,6 @@ std::vector<Point> parse_query_file(const std::string &file_path, const int num_
 
     return points;
 }
-
-
 
 /**
  * @brief
@@ -1097,10 +1013,10 @@ std::vector<Point> parse_query_file(const std::string &file_path, const int num_
  * The dimensions of each point
  * @return std::vector<Point>
  */
-std::vector<Point> parse_dummy_data(const std::string &file_path, const int num_dimensions) {
+std::vector<Point> parse_dummy_data(const std::string &file_path, const int num_dimensions)
+{
 
     std::cout << "Reading Data: " << file_path << std::endl;
-
 
     // Opening the file
     std::ifstream ifs;
@@ -1108,26 +1024,24 @@ std::vector<Point> parse_dummy_data(const std::string &file_path, const int num_
     assert(ifs.is_open());
 
     // 1. The first four bytes(int) represent the number of points in the file.
-    uint32_t N;  // num of points
+    uint32_t N; // num of points
     ifs.read((char *)&N, sizeof(uint32_t));
-
 
     std::cout << "# of points: " << N << std::endl;
 
     // vector that consists all points
     std::vector<Point> points;
-    //points.reserve(N); // reserve space for the points it is optional
-
+    // points.reserve(N); // reserve space for the points it is optional
 
     // buffer for reading each point
     std::vector<float> buff(num_dimensions);
-    
-
 
     // 2. Read and parse each point
-    for (int idx = 0; idx < N; ++idx) {
+    for (int idx = 0; idx < N; ++idx)
+    {
         // 3. Read point and store it in buff
-        if (!ifs.read(reinterpret_cast<char *>(buff.data()), num_dimensions * sizeof(float))) {
+        if (!ifs.read(reinterpret_cast<char *>(buff.data()), num_dimensions * sizeof(float)))
+        {
             std::cerr << "Error reading point data at index " << idx << std::endl;
             break;
         }
@@ -1140,10 +1054,9 @@ std::vector<Point> parse_dummy_data(const std::string &file_path, const int num_
         std::vector<float> row(buff.begin() + 2, buff.end());
 
         // 6. Create a new Point object placing the category in the category argument an timestamp in both bounds(lower , upper).
-        Point new_point = Point(idx, row , -1 , category , timestamp , timestamp);
+        Point new_point = Point(idx, row, -1, category, timestamp, timestamp);
         // 7. Add it to the database.
         points.push_back(new_point);
-
     }
     // 8. Close file and return the database
     ifs.close();
@@ -1151,6 +1064,5 @@ std::vector<Point> parse_dummy_data(const std::string &file_path, const int num_
 
     return points;
 }
-
 
 #endif // VAMANA_H
