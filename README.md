@@ -16,7 +16,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/xcalts/di-uoa-project-k23a">
-    <img src=".assets/logo.png" alt="Logo" width="80" height="80">
+    <img src=".github/logo.png" alt="Logo" width="80" height="80">
   </a>
 
   <h3 align="center">Project K23a</h3>

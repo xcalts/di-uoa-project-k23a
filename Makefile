@@ -62,7 +62,7 @@ release: all
 clean:
 	rm -rf $(SRC_OBJ_DIR) $(TESTS_OBJ_DIR) $(BIN_DIR) logs.txt
 
-test: unitests
+test: unitests vamana
 	$(BIN_DIR)/unitests
 
 .PHONY: all clean vamana filtered_vamana unitests debug release

@@ -10,36 +10,23 @@
 #include <numeric>
 #include <string>
 
+class Edge;
+class Point;
+class Vamana;
+
+int intersectionSize(const std::vector<int> &a, const std::vector<int> &b);
+std::vector<int> generateSigma(int n);
+float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b);
+std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath);
+std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath);
+std::vector<Point> parse_query_file(const std::string &file_path, const int num_dimensions);
+std::vector<Point> parse_dummy_data(const std::string &file_path, const int num_dimensions);
+
 #include <assert.h>
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
-
-/**
- * @brief
- * Prints the set data in a table format.
- * @param
- * set The set data.
- * @return std::string
- */
-std::string getTableStr(const std::unordered_set<int> &set)
-{
-    std::ostringstream oss;
-    oss << "[ ";
-    auto it = set.begin();
-    for (; it != set.end(); ++it)
-    {
-        oss << *it;
-        if (std::next(it) != set.end()) // Check if there's a next element
-        {
-            oss << ", ";
-        }
-    }
-    oss << " ]";
-
-    return oss.str();
-}
 
 /**
  * @brief
