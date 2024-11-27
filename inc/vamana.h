@@ -7,6 +7,11 @@
 #include <unordered_set>
 #include <queue>
 #include <limits>
+#include <numeric>
+#include <string>
+
+
+#include <assert.h>
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
@@ -231,6 +236,42 @@ public:
     int dimensions;
 
     /**
+     * @brief Query type for hybrid vector queries.
+     * 
+     * If 0: Vector-only query.
+     * 
+     * If 1: Query with categorical constraint ( C = v ).
+     * 
+     * If 2: Query with timestamp range ( l <= T <= r ).
+     * 
+     * If 3: Query with both constraints ( C = v ) and ( l <= T <= r ).
+     */
+    int query_type;
+
+    /**
+     * @brief Categorical attribute associated with the `Point`.
+     *  The specific query value v for the categorical attribute.
+     *  For queries: used as the equality predicate ( C = v ).
+     *  For dataset points: represents the category of the point.
+     *  If not queried,takes -1.
+     */
+    int category;
+
+    /**
+     * @brief Lower bound of the timestamp range (for queries).
+     *  Used only when ( query_type = 2 ) or ( query_type = 3 ).
+     *  If not queried,takes -1.
+     */
+    float lower_timestamp;
+
+    /**
+     * @brief Upper bound of the timestamp range (for queries).
+     *  Used only when ( query_type = 2 ) or ( query_type = 3 ).
+     *  If not queried,takes -1.
+     */
+    float upper_timestamp;
+
+    /**
      * @brief The vector data of the `Point`.
      */
     std::vector<float> vec;
@@ -239,9 +280,30 @@ public:
      * @brief The outgoing edges.
      */
     std::vector<Edge> outgoing_edges;
-
+        
+    
     /**
      * @brief Construct a new `Point` object.
+     * @param idx Unique identifier of the `Point` in the dataset.
+     * @param vector_data The vector data of the `Point`.
+     * @param q_type Query type (0, 1, 2, 3).
+     * @param cat Categorical attribute predicate (or -1 if not applicable).
+     * @param ts_low Lower bound of timestamp range (or -1 if not applicable).
+     * @param ts_high Upper bound of timestamp range (or -1 if not applicable).
+     */
+    Point(int idx, const std::vector<float> &vector_data, int q_type, int cat, float lower, float upper)
+    {
+        index = idx;
+        dimensions = vector_data.size();
+        vec = vector_data;
+        query_type = q_type;
+        category = cat;
+        lower_timestamp = lower;
+        upper_timestamp = upper;
+    }
+
+        /**
+     * @brief Construct a new `Point` simplified object.
      * @param idx Unique identifier of the `Point` in the dataset.
      * @param vector_data The vector data of the `Point`.
      */
@@ -250,7 +312,13 @@ public:
         index = idx;
         dimensions = vector_data.size();
         vec = vector_data;
+        query_type = 0;
+        category = -1;
+        lower_timestamp = -1;
+        upper_timestamp = -1;
     }
+
+
 
     /**
      * @brief Add a new neighbor/edge to this `Point`.
@@ -394,9 +462,15 @@ public:
 
     /**
      * @brief
+     * It contains all the `Point`s of the `queryset`.
+     */
+    std::vector<Point> queryset;
+
+    /**
+     * @brief
      * The number of `Point` in the `dataset`.
      */
-    int dataset_size;
+    int dataset_size , queryset_size ;
 
     /**
      * @brief
@@ -415,6 +489,23 @@ public:
         dataset = _dataset;
         dataset_size = _dataset.size();
     }
+
+     /**
+     * @brief
+     * Construct a new `Vamana` object.
+     * @param _dataset
+     * The dataset.
+     * @param _queryset
+     * The queries set.
+     */
+    Vamana(std::vector<Point> &_dataset , std::vector<Point> &_queryset)
+    {
+        dataset = _dataset;
+        dataset_size = _dataset.size();
+        queryset = _queryset;
+        dataset_size = _queryset.size();
+    }
+
 
     /**
      * @brief
@@ -610,6 +701,36 @@ public:
         return std::make_pair(L, V);
     }
 
+
+    /**
+     * @brief
+     * Checks filters between to Points search algorithm.
+     * @param P
+     * The index of the dataset point
+     * @param Q
+     * The index of the query point
+     * @return A true or false value is returned :
+     * 1 if the points are compatible or  0 if they are not compatible
+     */
+    int check_filters(Point &p ,Point &q){
+        int compatible = 0 ;
+
+        if (q.query_type == 0){
+            compatible = 1 ;
+        }
+        else if (q.query_type == 1 && p.category == q.category){
+            compatible = 1 ;
+        }
+        else if (q.query_type == 2 && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp ){
+            compatible = 1 ;
+        }
+        else if (q.query_type == 3 && p.category == q.category && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp ){
+            compatible = 1 ;
+        }
+        return compatible ; 
+    }
+
+
     /**
      * @brief
      * Get the k nearest neighbors using the Greedy Search algorithm.
@@ -690,7 +811,6 @@ public:
 
         return L;
     }
-
     /**
      * @brief
      * Brute force calculation of the k nearest neighbors of a given query point.
@@ -896,5 +1016,141 @@ std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
 
     return ground_truth;
 }
+
+
+
+/**
+ * @brief
+ * Parse a `bin` file  dummy-queries.
+ * @param bin_filepath
+ * The path to the `bin` file.
+ * @param num_dimensions
+ * The dimensions of each point
+ * @return std::vector<Point>
+ */
+std::vector<Point> parse_query_file(const std::string &file_path, const int num_dimensions) {
+
+    std::cout << "Reading Data: " << file_path << std::endl;
+
+
+    // Opening the file
+    std::ifstream ifs;
+    ifs.open(file_path, std::ios::binary);
+    assert(ifs.is_open());
+
+    // 1. The first four bytes(int) represent the number of points in the file.
+    uint32_t N;  // num of points
+    ifs.read((char *)&N, sizeof(uint32_t));
+
+
+    std::cout << "# of points: " << N << std::endl;
+
+    // vector that consists all points
+    std::vector<Point> points;
+    //points.reserve(N); // reserve space for the points it is optional
+
+
+    // buffer for reading each point
+    std::vector<float> buff(num_dimensions);
+    
+
+
+    // 2. Read and parse each point
+    for (int idx = 0; idx < N; ++idx) {
+        // 3. Read point and store it in buff
+        if (!ifs.read(reinterpret_cast<char *>(buff.data()), num_dimensions * sizeof(float))) {
+            std::cerr << "Error reading point data at index " << idx << std::endl;
+            break;
+        }
+
+        // 4. Parse metadata
+        int q_type = static_cast<int>(buff[0]);
+        int category = static_cast<int>(buff[1]);
+        float lower = buff[2];
+        float upper = buff[3];
+
+        // 5. Parse vector data (excluding the first 4 metadata values)
+        std::vector<float> row(buff.begin() + 4, buff.end());
+
+        // 6. Create a new Point object.
+        Point new_point = Point(idx, row , q_type , category , lower , upper);
+        // 7. Add it to the database.
+        points.push_back(new_point);
+       
+
+    }
+    // 8. Close file and return the database
+    ifs.close();
+    std::cout << "Finish Reading Data" << std::endl;
+
+    return points;
+}
+
+
+
+/**
+ * @brief
+ * Parse a `bin` file  dummy-data
+ * @param bin_filepath
+ * The path to the `bin` file.
+ * @param num_dimensions
+ * The dimensions of each point
+ * @return std::vector<Point>
+ */
+std::vector<Point> parse_dummy_data(const std::string &file_path, const int num_dimensions) {
+
+    std::cout << "Reading Data: " << file_path << std::endl;
+
+
+    // Opening the file
+    std::ifstream ifs;
+    ifs.open(file_path, std::ios::binary);
+    assert(ifs.is_open());
+
+    // 1. The first four bytes(int) represent the number of points in the file.
+    uint32_t N;  // num of points
+    ifs.read((char *)&N, sizeof(uint32_t));
+
+
+    std::cout << "# of points: " << N << std::endl;
+
+    // vector that consists all points
+    std::vector<Point> points;
+    //points.reserve(N); // reserve space for the points it is optional
+
+
+    // buffer for reading each point
+    std::vector<float> buff(num_dimensions);
+    
+
+
+    // 2. Read and parse each point
+    for (int idx = 0; idx < N; ++idx) {
+        // 3. Read point and store it in buff
+        if (!ifs.read(reinterpret_cast<char *>(buff.data()), num_dimensions * sizeof(float))) {
+            std::cerr << "Error reading point data at index " << idx << std::endl;
+            break;
+        }
+
+        // 4. Parse metadata
+        int category = static_cast<int>(buff[0]);
+        float timestamp = static_cast<int>(buff[1]);
+
+        // 5. Parse vector data (excluding the first 4 metadata values)
+        std::vector<float> row(buff.begin() + 2, buff.end());
+
+        // 6. Create a new Point object placing the category in the category argument an timestamp in both bounds(lower , upper).
+        Point new_point = Point(idx, row , -1 , category , timestamp , timestamp);
+        // 7. Add it to the database.
+        points.push_back(new_point);
+
+    }
+    // 8. Close file and return the database
+    ifs.close();
+    std::cout << "Finish Reading Data" << std::endl;
+
+    return points;
+}
+
 
 #endif // VAMANA_H

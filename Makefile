@@ -1,6 +1,7 @@
 CXX = g++
 CXXFLAGS = -std=c++14 -I./inc -I./libs
 
+
 BIN_DIR = bin
 
 SRC_DIR = src
@@ -53,3 +54,30 @@ clean:
 	rm -rf $(OBJ_DIR) $(T_OBJ_DIR) $(BIN_DIR) logs.txt
 
 .PHONY: all clean k23a unitests debug release
+
+
+
+############################################
+#####  makefile for the second project #####
+
+# source files and object files
+SOURCES_2 = src/newmain.cpp 
+# object files
+OBJECTS_2 = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(SOURCES_2))
+
+
+TARGET_2 = $(BIN_DIR)/newmain
+
+
+all2: $(TARGET_2)
+
+$(TARGET_2): $(OBJECTS_2)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(OBJECTS_2) -o $@
+
+$(OBJ_DIR)/%.o: %.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean2:
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
