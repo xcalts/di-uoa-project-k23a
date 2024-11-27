@@ -1,6 +1,20 @@
 # The filepath to the FVECS dataset of image vectors.
 dataset_filepath: "./.sample/siftsmall/siftsmall_base.fvecs"
+
 # The filepath to the FVECS queries of image vectors.
 queries_filepath: "./.sample/siftsmall/siftsmall_query.fvecs"
+
 # The filepath to the IVECS evaluation metrics.
 evaluation_filepath: "./.sample/siftsmall/siftsmall_groundtruth.ivecs"
+
+# The number of nearest neighbors to find.
+kNN: 10
+
+# Scaling factor to prune outgoing eges of a node (alpha).
+alpha: 1
+
+# Maximum list of search candidates to use in graph traversal.
+max_candinates: 20
+
+# Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
+max_edges: 20

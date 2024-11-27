@@ -4,7 +4,8 @@
 #include <string>
 
 #include "rapidyaml.h"
-#include "vamana.h"
+
+#include "misc.h"
 
 /**
  * @brief This class controls all the configuration logic.
@@ -26,6 +27,9 @@ private:
      */
     void initialize()
     {
+        // Validating that the file exists.
+        validateFileExists(_filepath);
+
         std::string _contents = readFileContents(_filepath);
 
         // Initializing the YAML tree.
@@ -36,6 +40,10 @@ private:
         root["dataset_filepath"] >> dataset_filepath;
         root["queries_filepath"] >> queries_filepath;
         root["evaluation_filepath"] >> evaluation_filepath;
+        root["kNN"] >> kNN;
+        root["alpha"] >> alpha;
+        root["max_candinates"] >> max_candinates;
+        root["max_edges"] >> max_edges;
     }
 
 public:
@@ -56,6 +64,30 @@ public:
      * The filepath to the IVECS evaluation metrics.
      */
     std::string evaluation_filepath;
+
+    /**
+     * @brief
+     * The number of nearest neighbors to find.
+     */
+    int kNN;
+
+    /**
+     * @brief
+     * Scaling factor to prune outgoing eges of a node (alpha).
+     */
+    float alpha;
+
+    /**
+     * @brief
+     * Maximum list of search candidates to use in graph traversal.
+     */
+    int max_candinates;
+
+    /**
+     * @brief
+     * Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
+     */
+    int max_edges;
 
     /**
      * @brief
