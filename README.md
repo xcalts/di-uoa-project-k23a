@@ -5,7 +5,7 @@
 
 [![C++][C++]][C++-url]
 [![Contributors][contributors-shield]][contributors-url]
-[![Commits][commits-shield]][commits-url]
+[![Tests][tests-shield]][tests-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
@@ -134,8 +134,8 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [contributors-shield]: https://img.shields.io/github/contributors/xcalts/di-uoa-project-k23a.svg?style=for-the-badge
 [contributors-url]: https://github.com/xcalts/di-uoa-project-k23a/graphs/contributors
-[commits-shield]: https://img.shields.io/github/last-commit/xcalts/di-uoa-project-k23a?style=for-the-badge
-[commits-url]: https://github.com/xcalts/di-uoa-project-k23a/commits/main
+[tests-shield]: https://img.shields.io/github/actions/workflow/status/xcalts/di-uoa-project-k23a/ci.yml
+[tests-url]: https://github.com/xcalts/di-uoa-project-k23a/actions/workflows/ci.yml
 [stars-shield]: https://img.shields.io/github/stars/xcalts/di-uoa-project-k23a.svg?style=for-the-badge
 [stars-url]: https://github.com/xcalts/di-uoa-project-k23a/stargazers
 [issues-shield]: https://img.shields.io/github/issues/xcalts/di-uoa-project-k23a.svg?style=for-the-badge
