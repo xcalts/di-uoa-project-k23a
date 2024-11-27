@@ -1,11 +1,11 @@
 # The filepath to the FVECS dataset of image vectors.
-dataset_filepath: "./.sample/siftsmall/siftsmall_base.fvecs"
+dataset_filepath: ".github/sample/siftsmall/siftsmall_base.fvecs"
 
 # The filepath to the FVECS queries of image vectors.
-queries_filepath: "./.sample/siftsmall/siftsmall_query.fvecs"
+queries_filepath: ".github/sample/siftsmall/siftsmall_query.fvecs"
 
 # The filepath to the IVECS evaluation metrics.
-evaluation_filepath: "./.sample/siftsmall/siftsmall_groundtruth.ivecs"
+evaluation_filepath: ".github/sample/siftsmall/siftsmall_groundtruth.ivecs"
 
 # The number of nearest neighbors to find.
 kNN: 10
