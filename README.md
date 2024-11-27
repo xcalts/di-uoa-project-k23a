@@ -134,7 +134,7 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [contributors-shield]: https://img.shields.io/github/contributors/xcalts/di-uoa-project-k23a.svg?style=for-the-badge
 [contributors-url]: https://github.com/xcalts/di-uoa-project-k23a/graphs/contributors
-[tests-shield]: https://img.shields.io/github/actions/workflow/status/xcalts/di-uoa-project-k23a/ci.yml?style=for-the-badge
+[tests-shield]: https://img.shields.io/github/actions/workflow/status/xcalts/di-uoa-project-k23a/ci.yml?style=for-the-badge&label=TESTS
 [tests-url]: https://github.com/xcalts/di-uoa-project-k23a/actions/workflows/ci.yml
 [stars-shield]: https://img.shields.io/github/stars/xcalts/di-uoa-project-k23a.svg?style=for-the-badge
 [stars-url]: https://github.com/xcalts/di-uoa-project-k23a/stargazers
