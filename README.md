@@ -22,7 +22,7 @@
   <h3 align="center">Project K23a</h3>
 
   <p align="center">
-    Implementations of the Vamana and Filtered Vamana indexing. [![C++][C++]][C++-url]
+    Implementations of the Vamana and Filtered Vamana indexing.
     <br />
     <a href="https://github.com/xcalts/di-uoa-project-k23a/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
     ·
