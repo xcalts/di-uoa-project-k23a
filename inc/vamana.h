@@ -13,6 +13,7 @@
 class Edge;
 class Point;
 class Vamana;
+class FilteredVamana;
 
 int intersectionSize(const std::vector<int> &a, const std::vector<int> &b);
 std::vector<int> generateSigma(int n);
@@ -114,6 +115,9 @@ public:
      * The weight of the `Edge`.
      */
     float weight;
+
+    // Default constructor
+    Edge() : to_index(-1), weight(0.0f) {} 
 
     /**
      * @brief
@@ -263,6 +267,10 @@ public:
 class Vamana
 {
 private:
+
+    // giving full access to filtered vamana class
+    friend class FilteredVamana; 
+
     /**
      * @brief
      * Generates initial random outgoing edges for each point in the dataset.
@@ -607,39 +615,6 @@ public:
             L.resize(k);
 
         return std::make_pair(L, V);
-    }
-
-    /**
-     * @brief
-     * Checks filters between to Points search algorithm.
-     * @param P
-     * The index of the dataset point
-     * @param Q
-     * The index of the query point
-     * @return A true or false value is returned :
-     * 1 if the points are compatible or  0 if they are not compatible
-     */
-    int check_filters(Point &p, Point &q)
-    {
-        int compatible = 0;
-
-        if (q.query_type == 0)
-        {
-            compatible = 1;
-        }
-        else if (q.query_type == 1 && p.category == q.category)
-        {
-            compatible = 1;
-        }
-        else if (q.query_type == 2 && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp)
-        {
-            compatible = 1;
-        }
-        else if (q.query_type == 3 && p.category == q.category && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp)
-        {
-            compatible = 1;
-        }
-        return compatible;
     }
 
     /**

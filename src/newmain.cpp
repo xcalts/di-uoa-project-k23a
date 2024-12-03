@@ -1,10 +1,7 @@
 #include <iostream>
 #include <vector>
-#include <string>
-#include <cassert>
-#include <sstream>  // for std::stringstream and std::ostringstream
-#include <random>   // for std::random_device and std::mt19937
-
+#include <algorithm>
+#include <unordered_set>
 
 #include "argh.h" // https://github.com/adishavit/argh
 
@@ -15,20 +12,21 @@
 #include "spdlog/stopwatch.h"
 
 #include "conf.h"
+#include "misc.h"
 #include "vamana.h"
-
+#include "filtered_vamana.h"
 
 /*
-make all2 
+make filtered_vamana 
+./bin/filtered_vamana
 or
 g++ -std=c++14 -I./inc -I./libs newmain.cpp -o newmain
-./bin/newmain
 */
 
 int main(int argc, char **argv) {
     // Default file paths
-    std::string source_path = "./.sample/dummy/dummy-data.bin";
-    std::string query_path = "./.sample/dummy/dummy-queries.bin";
+    std::string source_path = "./.github/sample/dummy/dummy-data.bin";
+    std::string query_path = "./.github/sample/dummy/dummy-queries.bin";
 
 
     // Number of dimensions for the data and queries
@@ -73,20 +71,27 @@ int main(int argc, char **argv) {
     }
     
     // Initializing the `Vamana` object.
-    Vamana vamana = Vamana(data_points , query_points );
+    FilteredVamana vamana = FilteredVamana(data_points , query_points );
     Point &p = vamana.dataset[20] , &q = vamana.queryset[25];
-    int compatible = vamana.check_filters(p , q);
+    int compatible = check_filters(p , q);
 
     std::cout << "compatibillity of p and q is " << compatible << "\n";
 
     p = vamana.dataset[21];
     q = vamana.queryset[25];
 
-    compatible = vamana.check_filters(p , q);
+    compatible = check_filters(p , q);
 
     std::cout << "compatibillity of p and q is " << compatible << "\n";
 
-    std::cout << "\n";
+    std::cout << "\n\n";
 
+    /*
+    std::pair<std::vector<Edge> , std::vector<int>> test=vamana.filteredGreedySearch({0,1} , 0 , 6 , 10 , 0);
+    for(Edge &E : test.first){
+        std::cout<<E.to_index<<"\t";
+    }
+    std::cout << "\n";    
+    */
     return 0;
 }
