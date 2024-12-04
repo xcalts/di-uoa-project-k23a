@@ -10,34 +10,22 @@
 #include <numeric>
 #include <string>
 
-class Edge;
-class Point;
-class Vamana;
-class FilteredVamana;
-
-int intersectionSize(const std::vector<int> &a, const std::vector<int> &b);
-std::vector<int> generateSigma(int n);
-float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b);
-std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath);
-std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath);
-std::vector<Point> parse_query_file(const std::string &file_path, const int num_dimensions);
-std::vector<Point> parse_dummy_data(const std::string &file_path, const int num_dimensions);
-
 #include <assert.h>
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
-/**
- * @brief
- * Calculates the size of the intersection between two vectors of integers.
- * @param vec1
- * First vector of integers.
- * @param vec2
- * Second vector of integers.
- * @return int
- */
+int intersectionSize(const std::vector<int> &a, const std::vector<int> &b);
+std::vector<int> generateSigma(int n);
+float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b);
+std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath);
+std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath);
+
+class Edge;
+class Point;
+class Vamana;
+
 int intersectionSize(const std::vector<int> &a, const std::vector<int> &b)
 {
     // Convert vectors to unordered sets to remove duplicates
@@ -55,6 +43,84 @@ int intersectionSize(const std::vector<int> &a, const std::vector<int> &b)
             count++;
 
     return count;
+}
+
+/**
+ * @brief
+ * Parse a `.fvecs` file.
+ * @param fvecs_filepath
+ * The path to the `.fvecs` file.
+ * @return std::vector<Point>
+ */
+std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath)
+{
+    std::vector<Point> points;
+    std::ifstream fvecs(fvecs_filepath, std::ios::binary);
+    int idx = 0;
+
+    while (fvecs)
+    {
+        int dimensions;
+
+        // 1. The first four bytes(int) represent the number of dimensions of the vector data.
+        fvecs.read(reinterpret_cast<char *>(&dimensions), sizeof(int));
+
+        if (!fvecs)
+            break;
+
+        std::vector<float> v(dimensions);
+
+        // 2. Read the rest of the values as a vector of size `vector_no_dimensions`.
+        fvecs.read(reinterpret_cast<char *>(v.data()), dimensions * sizeof(float));
+
+        // 3. Create a new `Point` object.
+        Point new_point = Point(idx, v);
+
+        // 4. Add it to the database.
+        points.push_back(new_point);
+
+        // 5. Incremnt index.
+        idx++;
+    }
+
+    fvecs.close();
+
+    return points;
+}
+
+/**
+ * @brief
+ * Parse a `.ivecs` file.
+ * @param ivecs_filepath
+ * The path to the `.ivecs` file.
+ * @return std::vector<std::vector<int>>
+ */
+std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
+{
+    std::vector<std::vector<int>> ground_truth;
+
+    std::ifstream ivecs(ivecs_filepath, std::ios::binary);
+    while (ivecs)
+    {
+        // 1. The first four bytes(int) represent the number of dimensions of the vector data.
+        int dimensions = 0;
+        ivecs.read(reinterpret_cast<char *>(&dimensions), sizeof(int));
+
+        if (!ivecs)
+            break;
+
+        std::vector<int> v(dimensions);
+
+        // 2. Read the rest of the values as a vector of size `_dimensions`.
+        ivecs.read(reinterpret_cast<char *>(v.data()), dimensions * sizeof(int));
+
+        // 4. Add it to the database.
+        ground_truth.push_back(v);
+    }
+
+    ivecs.close();
+
+    return ground_truth;
 }
 
 /**
@@ -117,7 +183,7 @@ public:
     float weight;
 
     // Default constructor
-    Edge() : to_index(-1), weight(0.0f) {} 
+    Edge() : to_index(-1), weight(0.0f) {}
 
     /**
      * @brief
@@ -267,9 +333,8 @@ public:
 class Vamana
 {
 private:
-
     // giving full access to filtered vamana class
-    friend class FilteredVamana; 
+    friend class FilteredVamana;
 
     /**
      * @brief
@@ -824,207 +889,5 @@ public:
         spdlog::debug("+---------------------------------------------------------------------------------+");
     }
 };
-
-/**
- * @brief
- * Parse a `.fvecs` file.
- * @param fvecs_filepath
- * The path to the `.fvecs` file.
- * @return std::vector<Point>
- */
-std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath)
-{
-    std::vector<Point> points;
-    std::ifstream fvecs(fvecs_filepath, std::ios::binary);
-    int idx = 0;
-
-    while (fvecs)
-    {
-        int dimensions;
-
-        // 1. The first four bytes(int) represent the number of dimensions of the vector data.
-        fvecs.read(reinterpret_cast<char *>(&dimensions), sizeof(int));
-
-        if (!fvecs)
-            break;
-
-        std::vector<float> v(dimensions);
-
-        // 2. Read the rest of the values as a vector of size `vector_no_dimensions`.
-        fvecs.read(reinterpret_cast<char *>(v.data()), dimensions * sizeof(float));
-
-        // 3. Create a new `Point` object.
-        Point new_point = Point(idx, v);
-
-        // 4. Add it to the database.
-        points.push_back(new_point);
-
-        // 5. Incremnt index.
-        idx++;
-    }
-
-    fvecs.close();
-
-    return points;
-}
-
-/**
- * @brief
- * Parse a `.ivecs` file.
- * @param ivecs_filepath
- * The path to the `.ivecs` file.
- * @return std::vector<std::vector<int>>
- */
-std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
-{
-    std::vector<std::vector<int>> ground_truth;
-
-    std::ifstream ivecs(ivecs_filepath, std::ios::binary);
-    while (ivecs)
-    {
-        // 1. The first four bytes(int) represent the number of dimensions of the vector data.
-        int dimensions = 0;
-        ivecs.read(reinterpret_cast<char *>(&dimensions), sizeof(int));
-
-        if (!ivecs)
-            break;
-
-        std::vector<int> v(dimensions);
-
-        // 2. Read the rest of the values as a vector of size `_dimensions`.
-        ivecs.read(reinterpret_cast<char *>(v.data()), dimensions * sizeof(int));
-
-        // 4. Add it to the database.
-        ground_truth.push_back(v);
-    }
-
-    ivecs.close();
-
-    return ground_truth;
-}
-
-/**
- * @brief
- * Parse a `bin` file  dummy-queries.
- * @param bin_filepath
- * The path to the `bin` file.
- * @param num_dimensions
- * The dimensions of each point
- * @return std::vector<Point>
- */
-std::vector<Point> parse_query_file(const std::string &file_path, const int num_dimensions)
-{
-
-    std::cout << "Reading Data: " << file_path << std::endl;
-
-    // Opening the file
-    std::ifstream ifs;
-    ifs.open(file_path, std::ios::binary);
-    assert(ifs.is_open());
-
-    // 1. The first four bytes(int) represent the number of points in the file.
-    uint32_t N; // num of points
-    ifs.read((char *)&N, sizeof(uint32_t));
-
-    std::cout << "# of points: " << N << std::endl;
-
-    // vector that consists all points
-    std::vector<Point> points;
-    // points.reserve(N); // reserve space for the points it is optional
-
-    // buffer for reading each point
-    std::vector<float> buff(num_dimensions);
-
-    // 2. Read and parse each point
-    for (int idx = 0; idx < N; ++idx)
-    {
-        // 3. Read point and store it in buff
-        if (!ifs.read(reinterpret_cast<char *>(buff.data()), num_dimensions * sizeof(float)))
-        {
-            std::cerr << "Error reading point data at index " << idx << std::endl;
-            break;
-        }
-
-        // 4. Parse metadata
-        int q_type = static_cast<int>(buff[0]);
-        int category = static_cast<int>(buff[1]);
-        float lower = buff[2];
-        float upper = buff[3];
-
-        // 5. Parse vector data (excluding the first 4 metadata values)
-        std::vector<float> row(buff.begin() + 4, buff.end());
-
-        // 6. Create a new Point object.
-        Point new_point = Point(idx, row, q_type, category, lower, upper);
-        // 7. Add it to the database.
-        points.push_back(new_point);
-    }
-    // 8. Close file and return the database
-    ifs.close();
-    std::cout << "Finish Reading Data" << std::endl;
-
-    return points;
-}
-
-/**
- * @brief
- * Parse a `bin` file  dummy-data
- * @param bin_filepath
- * The path to the `bin` file.
- * @param num_dimensions
- * The dimensions of each point
- * @return std::vector<Point>
- */
-std::vector<Point> parse_dummy_data(const std::string &file_path, const int num_dimensions)
-{
-
-    std::cout << "Reading Data: " << file_path << std::endl;
-
-    // Opening the file
-    std::ifstream ifs;
-    ifs.open(file_path, std::ios::binary);
-    assert(ifs.is_open());
-
-    // 1. The first four bytes(int) represent the number of points in the file.
-    uint32_t N; // num of points
-    ifs.read((char *)&N, sizeof(uint32_t));
-
-    std::cout << "# of points: " << N << std::endl;
-
-    // vector that consists all points
-    std::vector<Point> points;
-    // points.reserve(N); // reserve space for the points it is optional
-
-    // buffer for reading each point
-    std::vector<float> buff(num_dimensions);
-
-    // 2. Read and parse each point
-    for (int idx = 0; idx < N; ++idx)
-    {
-        // 3. Read point and store it in buff
-        if (!ifs.read(reinterpret_cast<char *>(buff.data()), num_dimensions * sizeof(float)))
-        {
-            std::cerr << "Error reading point data at index " << idx << std::endl;
-            break;
-        }
-
-        // 4. Parse metadata
-        int category = static_cast<int>(buff[0]);
-        float timestamp = static_cast<int>(buff[1]);
-
-        // 5. Parse vector data (excluding the first 4 metadata values)
-        std::vector<float> row(buff.begin() + 2, buff.end());
-
-        // 6. Create a new Point object placing the category in the category argument an timestamp in both bounds(lower , upper).
-        Point new_point = Point(idx, row, -1, category, timestamp, timestamp);
-        // 7. Add it to the database.
-        points.push_back(new_point);
-    }
-    // 8. Close file and return the database
-    ifs.close();
-    std::cout << "Finish Reading Data" << std::endl;
-
-    return points;
-}
 
 #endif // VAMANA_H

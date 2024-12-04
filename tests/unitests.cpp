@@ -4,9 +4,11 @@
 #include <iostream>
 #include <sys/stat.h>
 
-#define RYML_SINGLE_HDR_DEFINE_NOW // https://github.com/biojppm/rapidyaml
+// https://github.com/biojppm/rapidyaml
+#define RYML_SINGLE_HDR_DEFINE_NOW
 #include "rapidyaml.h"
 
+// https://github.com/mity/acutest
 #include "acutest.h"
 
 #include "conf.h"

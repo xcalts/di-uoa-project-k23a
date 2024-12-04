@@ -3,12 +3,15 @@
 #include <algorithm>
 #include <unordered_set>
 
-#include "argh.h" // https://github.com/adishavit/argh
+// https://github.com/adishavit/argh
+#include "argh.h"
 
-#define RYML_SINGLE_HDR_DEFINE_NOW // https://github.com/biojppm/rapidyaml
+// https://github.com/biojppm/rapidyaml
+#define RYML_SINGLE_HDR_DEFINE_NOW
 #include "rapidyaml.h"
 
-#include "spdlog/spdlog.h" // https://github.com/gabime/spdlog
+// https://github.com/gabime/spdlog
+#include "spdlog/spdlog.h"
 #include "spdlog/stopwatch.h"
 
 #include "conf.h"
@@ -24,10 +27,10 @@ int main(int argc, char *argv[])
         std::string conf_filepath;
         spdlog::stopwatch sw;
 
-        // Setup logging.
+        // Setting up logging.
         setupLogging();
 
-        // Parsing the arguments.
+        spdlog::info("[+] Parsing the command-line arguments.");
         argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
         cmdl({"-c", "--conf"}) >> conf_filepath;
 
@@ -37,42 +40,46 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        // Validating the parsed arguments.
+        spdlog::info("[+] Validating that the configuration filepath exists.");
         validateFileExists(conf_filepath);
 
-        // Parsing the YAML configuration file.
+        spdlog::info("[+] Parsing the YAML configuration file.");
         Configuration conf = Configuration(conf_filepath);
 
-        // Validating the YAML configuration file's parameters.
+        spdlog::info("[+] Validating that the YAML configuration file's parameters.");
         validateFileExists(conf.dataset_filepath);
         validateFileExists(conf.queries_filepath);
         validateFileExists(conf.evaluation_filepath);
 
-        // Parsing the dataset, queries and ground-truth data.
+        spdlog::info("[+] Parsing the dataset/queries/ground-truth data and printing the parsed parameters.");
         std::vector<Point> dataset_points = parseFvecsFile(conf.dataset_filepath);
         std::vector<Point> query_points = parseFvecsFile(conf.queries_filepath);
         std::vector<std::vector<int>> ground_truth = parseIvecsFile(conf.evaluation_filepath);
 
-        spdlog::info("Dataset: {} nodes ({})", dataset_points.size(), conf.dataset_filepath);
-        spdlog::info("Queries: {} nodes ({})", query_points.size(), conf.queries_filepath);
-        spdlog::info("Ground Truth: {} matrices of {} NNs ({})", ground_truth.size(), ground_truth[0].size(), conf.evaluation_filepath);
+        spdlog::info("- Dataset: {} nodes ({})", dataset_points.size(), conf.dataset_filepath);
+        spdlog::info("- Queries: {} nodes ({})", query_points.size(), conf.queries_filepath);
+        spdlog::info("- # of Nearest Neighbors: {}", conf.kNN);
+        spdlog::info("- Alpha: {}", conf.alpha);
+        spdlog::info("- Max Candinates: {}", conf.max_candinates);
+        spdlog::info("- Max Edges: {}", conf.max_edges);
 
-        // Initializing the `Vamana` object.
+        spdlog::info("[+] Initializing Vamana.");
         Vamana vamana = Vamana(dataset_points);
 
-        // Calculating the medoid of the dataset.
+        //
+        spdlog::info("[+] Calculating the Medoid of the dataset.");
         sw.reset();
-        vamana.calculateMedoid();
-        // vamana.medoid_idx = 8736;
-        spdlog::info("Medoid Calculation: @{} ({} seconds)", vamana.medoid_idx, sw);
+        // vamana.calculateMedoid();
+        vamana.medoid_idx = 8736;
+        spdlog::info("- Time Elapsed: {} seconds.", sw);
+        spdlog::info("- Medoid's Index: {}", vamana.medoid_idx);
 
-        // Indexing the graph using the Vamana algorithm.
+        spdlog::info("[+] Indexing the graph using the Vamana algorithm.");
         sw.reset();
         vamana.index(conf.alpha, conf.max_candinates, conf.max_edges);
-        spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] %^[%l]%$ %v");
-        spdlog::info("Vamana Indexing: {} seconds.", sw);
+        spdlog::info("- Time Elapsed: {} seconds.", sw);
 
-        // Evaluating the algorithm.
+        spdlog::info("[+] Evaluating the algorithm.");
         int total = 0;
         std::vector<int> kNNs;
         double vamana_time = 0.0;
@@ -86,15 +93,15 @@ int main(int argc, char *argv[])
                 sw.reset();
                 kNNs = vamana.greedySearchNearestNeighbors(vamana.medoid_idx, q, k, L);
                 vamana_time = sw.elapsed().count();
-                spdlog::info("Vamana K-NN Request: {} seconds.", vamana_time);
+                spdlog::info("- Vamana K-NN Request: {} seconds.", vamana_time);
 
                 sw.reset();
                 kNNs = vamana.bruteForceNearestNeighbors(q, k);
                 brute_time = sw.elapsed().count();
-                spdlog::info("Brute-force K-NN Request: {} seconds.", brute_time);
+                spdlog::info("- Brute-force K-NN Request: {} seconds.", brute_time);
 
                 double speedup = brute_time / vamana_time;
-                spdlog::info("Vamana K-NN is {:.2f} times faster than brute-force.", speedup);
+                spdlog::info("- Vamana K-NN is {:.2f} times faster than brute-force.", speedup);
             }
 
             kNNs = vamana.greedySearchNearestNeighbors(vamana.medoid_idx, q, k, L);
@@ -104,8 +111,9 @@ int main(int argc, char *argv[])
         }
 
         // Calculate recall percentage.
+        spdlog::info("total: {}", total);
         float recall = static_cast<float>(total) / (k * (query_points.size() + 1)) * 100;
-        spdlog::info("Recall@{}: {:.2f}%.", k, recall);
+        spdlog::info("- Recall@{}: {:.2f}%.", k, recall);
 
         return EXIT_SUCCESS;
     }

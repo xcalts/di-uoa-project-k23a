@@ -14,7 +14,7 @@ kNN: 10
 alpha: 1
 
 # Maximum list of search candidates to use in graph traversal.
-max_candinates: 20
+max_candinates: 30
 
 # Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
-max_edges: 20
+max_edges: 30
