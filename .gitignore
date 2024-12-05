@@ -1,9 +1,6 @@
 # IDE
 .vscode/
 
-# Project Related
-siftsmall/
-
 # Ignore output
 out/
 logs.txt

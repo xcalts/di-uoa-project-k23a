@@ -12,8 +12,8 @@ VAMANA_SRC = $(SRC_DIR)/vamana.cpp
 VAMANA_OBJ = $(SRC_OBJ_DIR)/vamana.o
 
 # Filtered Vamana Indexing
-FILTERED_VAMANA_SRC = $(SRC_DIR)/newmain.cpp
-FILTERED_VAMANA_OBJ = $(SRC_OBJ_DIR)/newmain.o
+FILTERED_VAMANA_SRC = $(SRC_DIR)/filtered_vamana.cpp
+FILTERED_VAMANA_OBJ = $(SRC_OBJ_DIR)/filtered_vamana.o
 
 # Unit Tests
 UNIT_TESTS_SRC = $(TESTS_DIR)/unitests.cpp
