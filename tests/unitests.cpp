@@ -13,6 +13,7 @@
 
 #include "conf.h"
 #include "misc.h"
+#include "vamana.h"
 
 /**********/
 /* conf.h */
@@ -126,6 +127,54 @@ void test_validate_file_exists()
     TEST_EXCEPTION(validateFileExists("temp_test_file.txt"), std::runtime_error);
 }
 
+/**********/
+/* vamana.h */
+/**********/
+
+/**
+ * @brief
+ * Test to check if the intersectionSize function works correctly.
+ */
+void test_intersection_size()
+{
+    std::vector<int> vec1 = {1, 2, 3, 4, 5};
+    std::vector<int> vec2 = {4, 5, 6, 7, 8};
+    int result = intersectionSize(vec1, vec2);
+    TEST_CHECK(result == 2);
+
+    vec1 = {1, 2, 3};
+    vec2 = {4, 5, 6};
+    result = intersectionSize(vec1, vec2);
+    TEST_CHECK(result == 0);
+
+    vec1 = {1, 2, 3, 4, 5};
+    vec2 = {1, 2, 3, 4, 5};
+    result = intersectionSize(vec1, vec2);
+    TEST_CHECK(result == 5);
+}
+
+/**
+ * @brief
+ * Test to check if the euclideanDistance function works correctly.
+ */
+void test_euclidean_distance()
+{
+    std::vector<float> vec1 = {1.0, 2.0, 3.0};
+    std::vector<float> vec2 = {4.0, 5.0, 6.0};
+    float result = euclideanDistance(vec1, vec2);
+    TEST_CHECK(std::floor(result) == std::floor(std::sqrt(27.0)));
+
+    vec1 = {0.0, 0.0, 0.0};
+    vec2 = {0.0, 0.0, 0.0};
+    result = euclideanDistance(vec1, vec2);
+    TEST_CHECK(std::floor(result) == std::floor(0.0));
+
+    vec1 = {1.0, 2.0};
+    vec2 = {4.0, 6.0};
+    result = euclideanDistance(vec1, vec2);
+    TEST_CHECK(std::floor(result) == std::floor(5.0));
+}
+
 // run tests
 TEST_LIST = {
     {"conf.h - Initialization", test_configuration_initialization},
@@ -134,5 +183,7 @@ TEST_LIST = {
     {"misc.h - Debug Function", test_debug_function},
     {"misc.h - Read File Contents", test_read_file_contents},
     {"misc.h - Validate File Exists", test_validate_file_exists},
+    {"vamana.h - Intersection Size", test_intersection_size},
+    {"vamana.h - Euclidean Distance", test_euclidean_distance},
     {NULL, NULL} // {NULL, NULL} is marking the end of the list
 };

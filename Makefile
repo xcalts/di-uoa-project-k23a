@@ -8,8 +8,8 @@ SRC_OBJ_DIR = obj
 TESTS_OBJ_DIR = test_obj
 
 # Vamana Indexing
-VAMANA_SRC = $(SRC_DIR)/main.cpp
-VAMANA_OBJ = $(SRC_OBJ_DIR)/main.o
+VAMANA_SRC = $(SRC_DIR)/vamana.cpp
+VAMANA_OBJ = $(SRC_OBJ_DIR)/vamana.o
 
 # Filtered Vamana Indexing
 FILTERED_VAMANA_SRC = $(SRC_DIR)/newmain.cpp

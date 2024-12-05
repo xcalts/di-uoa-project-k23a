@@ -10,158 +10,19 @@
 #include <numeric>
 #include <string>
 
-#include <assert.h>
-
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
+
+class Edge;
+class Point;
+class Vamana;
 
 int intersectionSize(const std::vector<int> &a, const std::vector<int> &b);
 std::vector<int> generateSigma(int n);
 float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b);
 std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath);
 std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath);
-
-class Edge;
-class Point;
-class Vamana;
-
-int intersectionSize(const std::vector<int> &a, const std::vector<int> &b)
-{
-    // Convert vectors to unordered sets to remove duplicates
-    std::unordered_set<int> set_a(a.begin(), a.end());
-    std::unordered_set<int> set_b(b.begin(), b.end());
-
-    int count = 0;
-
-    // Iterate through the smaller set for efficiency
-    if (set_a.size() > set_b.size())
-        std::swap(set_a, set_b);
-
-    for (const int &e : set_a)
-        if (set_b.find(e) != set_b.end())
-            count++;
-
-    return count;
-}
-
-/**
- * @brief
- * Parse a `.fvecs` file.
- * @param fvecs_filepath
- * The path to the `.fvecs` file.
- * @return std::vector<Point>
- */
-std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath)
-{
-    std::vector<Point> points;
-    std::ifstream fvecs(fvecs_filepath, std::ios::binary);
-    int idx = 0;
-
-    while (fvecs)
-    {
-        int dimensions;
-
-        // 1. The first four bytes(int) represent the number of dimensions of the vector data.
-        fvecs.read(reinterpret_cast<char *>(&dimensions), sizeof(int));
-
-        if (!fvecs)
-            break;
-
-        std::vector<float> v(dimensions);
-
-        // 2. Read the rest of the values as a vector of size `vector_no_dimensions`.
-        fvecs.read(reinterpret_cast<char *>(v.data()), dimensions * sizeof(float));
-
-        // 3. Create a new `Point` object.
-        Point new_point = Point(idx, v);
-
-        // 4. Add it to the database.
-        points.push_back(new_point);
-
-        // 5. Incremnt index.
-        idx++;
-    }
-
-    fvecs.close();
-
-    return points;
-}
-
-/**
- * @brief
- * Parse a `.ivecs` file.
- * @param ivecs_filepath
- * The path to the `.ivecs` file.
- * @return std::vector<std::vector<int>>
- */
-std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
-{
-    std::vector<std::vector<int>> ground_truth;
-
-    std::ifstream ivecs(ivecs_filepath, std::ios::binary);
-    while (ivecs)
-    {
-        // 1. The first four bytes(int) represent the number of dimensions of the vector data.
-        int dimensions = 0;
-        ivecs.read(reinterpret_cast<char *>(&dimensions), sizeof(int));
-
-        if (!ivecs)
-            break;
-
-        std::vector<int> v(dimensions);
-
-        // 2. Read the rest of the values as a vector of size `_dimensions`.
-        ivecs.read(reinterpret_cast<char *>(v.data()), dimensions * sizeof(int));
-
-        // 4. Add it to the database.
-        ground_truth.push_back(v);
-    }
-
-    ivecs.close();
-
-    return ground_truth;
-}
-
-/**
- * @brief
- * Generating a vector that contains all numbers from 1..n shuffled.
- * @param n
- * The size of the vector.
- * @return
- * std::vector<int>
- */
-std::vector<int> generateSigma(int n)
-{
-    //
-    std::vector<int> sigma(n);
-    for (int i = 0; i < n; ++i)
-        sigma[i] = i;
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(sigma.begin(), sigma.end(), g);
-
-    return sigma;
-}
-
-/**
- * @brief
- * Calculate the euclidean distance between two vectors `a` and `b`.
- * @param a
- * The first `vector`.
- * @param b
- * The second `vector`.
- * @return float
- */
-float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b)
-{
-    float sum = 0.0f;
-
-    for (size_t i = 0; i < a.size(); ++i)
-        sum += std::pow(a[i] - b[i], 2);
-
-    return std::sqrt(sum);
-}
 
 /**
  * @brief
@@ -889,5 +750,154 @@ public:
         spdlog::debug("+---------------------------------------------------------------------------------+");
     }
 };
+
+/**
+ * @brief
+ * Computes the size of the intersection of two integer vectors.
+ *
+ * This function takes two vectors of integers, converts them to unordered sets
+ * to remove duplicates, and then calculates the number of elements that are
+ * present in both sets.
+ *
+ * @param a The first vector of integers.
+ * @param b The second vector of integers.
+ * @return The number of elements that are present in both vectors.
+ */
+int intersectionSize(const std::vector<int> &a, const std::vector<int> &b)
+{
+    // Convert vectors to unordered sets to remove duplicates
+    std::unordered_set<int> set_a(a.begin(), a.end());
+    std::unordered_set<int> set_b(b.begin(), b.end());
+
+    int count = 0;
+
+    // Iterate through the smaller set for efficiency
+    if (set_a.size() > set_b.size())
+        std::swap(set_a, set_b);
+
+    for (const int &e : set_a)
+        if (set_b.find(e) != set_b.end())
+            count++;
+
+    return count;
+}
+
+/**
+ * @brief
+ * Parse a `.fvecs` file.
+ * @param fvecs_filepath
+ * The path to the `.fvecs` file.
+ * @return std::vector<Point>
+ */
+std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath)
+{
+    std::vector<Point> points;
+    std::ifstream fvecs(fvecs_filepath, std::ios::binary);
+    int idx = 0;
+
+    while (fvecs)
+    {
+        int dimensions;
+
+        // 1. The first four bytes(int) represent the number of dimensions of the vector data.
+        fvecs.read(reinterpret_cast<char *>(&dimensions), sizeof(int));
+
+        if (!fvecs)
+            break;
+
+        std::vector<float> v(dimensions);
+
+        // 2. Read the rest of the values as a vector of size `vector_no_dimensions`.
+        fvecs.read(reinterpret_cast<char *>(v.data()), dimensions * sizeof(float));
+
+        // 3. Create a new `Point` object.
+        Point new_point = Point(idx, v);
+
+        // 4. Add it to the database.
+        points.push_back(new_point);
+
+        // 5. Incremnt index.
+        idx++;
+    }
+
+    fvecs.close();
+
+    return points;
+}
+
+/**
+ * @brief
+ * Parse a `.ivecs` file.
+ * @param ivecs_filepath
+ * The path to the `.ivecs` file.
+ * @return std::vector<std::vector<int>>
+ */
+std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
+{
+    std::vector<std::vector<int>> ground_truth;
+
+    std::ifstream ivecs(ivecs_filepath, std::ios::binary);
+    while (ivecs)
+    {
+        // 1. The first four bytes(int) represent the number of dimensions of the vector data.
+        int dimensions = 0;
+        ivecs.read(reinterpret_cast<char *>(&dimensions), sizeof(int));
+
+        if (!ivecs)
+            break;
+
+        std::vector<int> v(dimensions);
+
+        // 2. Read the rest of the values as a vector of size `_dimensions`.
+        ivecs.read(reinterpret_cast<char *>(v.data()), dimensions * sizeof(int));
+
+        // 4. Add it to the database.
+        ground_truth.push_back(v);
+    }
+
+    ivecs.close();
+
+    return ground_truth;
+}
+
+/**
+ * @brief
+ * Generating a vector that contains all numbers from 1..n shuffled.
+ * @param n
+ * The size of the vector.
+ * @return
+ * std::vector<int>
+ */
+std::vector<int> generateSigma(int n)
+{
+    //
+    std::vector<int> sigma(n);
+    for (int i = 0; i < n; ++i)
+        sigma[i] = i;
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(sigma.begin(), sigma.end(), g);
+
+    return sigma;
+}
+
+/**
+ * @brief
+ * Calculate the euclidean distance between two vectors `a` and `b`.
+ * @param a
+ * The first `vector`.
+ * @param b
+ * The second `vector`.
+ * @return float
+ */
+float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b)
+{
+    float sum = 0.0f;
+
+    for (size_t i = 0; i < a.size(); ++i)
+        sum += std::pow(a[i] - b[i], 2);
+
+    return std::sqrt(sum);
+}
 
 #endif // VAMANA_H

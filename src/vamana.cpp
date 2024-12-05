@@ -22,8 +22,6 @@ int main(int argc, char *argv[])
 {
     try
     {
-        float a = 0.0f;
-        int k, L, R = 0;
         std::string conf_filepath;
         spdlog::stopwatch sw;
 
@@ -55,29 +53,26 @@ int main(int argc, char *argv[])
         std::vector<Point> dataset_points = parseFvecsFile(conf.dataset_filepath);
         std::vector<Point> query_points = parseFvecsFile(conf.queries_filepath);
         std::vector<std::vector<int>> ground_truth = parseIvecsFile(conf.evaluation_filepath);
-
-        spdlog::info("- Dataset: {} nodes ({})", dataset_points.size(), conf.dataset_filepath);
-        spdlog::info("- Queries: {} nodes ({})", query_points.size(), conf.queries_filepath);
-        spdlog::info("- # of Nearest Neighbors: {}", conf.kNN);
-        spdlog::info("- Alpha: {}", conf.alpha);
-        spdlog::info("- Max Candinates: {}", conf.max_candinates);
-        spdlog::info("- Max Edges: {}", conf.max_edges);
+        spdlog::info("    [i] Dataset: {} nodes ({})", dataset_points.size(), conf.dataset_filepath);
+        spdlog::info("    [i] Queries: {} nodes ({})", query_points.size(), conf.queries_filepath);
+        spdlog::info("    [i] K Nearest Neighbors: {}", conf.kNN);
+        spdlog::info("    [i] Alpha: {}", conf.alpha);
+        spdlog::info("    [i] Max Candinates: {}", conf.max_candinates);
+        spdlog::info("    [i] Max Edges: {}", conf.max_edges);
 
         spdlog::info("[+] Initializing Vamana.");
         Vamana vamana = Vamana(dataset_points);
 
-        //
         spdlog::info("[+] Calculating the Medoid of the dataset.");
         sw.reset();
-        // vamana.calculateMedoid();
-        vamana.medoid_idx = 8736;
-        spdlog::info("- Time Elapsed: {} seconds.", sw);
-        spdlog::info("- Medoid's Index: {}", vamana.medoid_idx);
+        vamana.calculateMedoid();
+        spdlog::info("    [i] Time Elapsed: {} seconds.", sw);
+        spdlog::info("    [i] Medoid's Index: {}", vamana.medoid_idx);
 
         spdlog::info("[+] Indexing the graph using the Vamana algorithm.");
         sw.reset();
         vamana.index(conf.alpha, conf.max_candinates, conf.max_edges);
-        spdlog::info("- Time Elapsed: {} seconds.", sw);
+        spdlog::info("    [i] Time Elapsed: {} seconds.", sw);
 
         spdlog::info("[+] Evaluating the algorithm.");
         int total = 0;
@@ -91,29 +86,32 @@ int main(int argc, char *argv[])
             if (idx == 0)
             {
                 sw.reset();
-                kNNs = vamana.greedySearchNearestNeighbors(vamana.medoid_idx, q, k, L);
+                kNNs = vamana.greedySearchNearestNeighbors(vamana.medoid_idx, q, conf.kNN, conf.max_candinates);
                 vamana_time = sw.elapsed().count();
-                spdlog::info("- Vamana K-NN Request: {} seconds.", vamana_time);
+                spdlog::info("    [i] Vamana K-NN Request: {} seconds.", vamana_time);
 
                 sw.reset();
-                kNNs = vamana.bruteForceNearestNeighbors(q, k);
+                kNNs = vamana.bruteForceNearestNeighbors(q, conf.kNN);
                 brute_time = sw.elapsed().count();
-                spdlog::info("- Brute-force K-NN Request: {} seconds.", brute_time);
+                spdlog::info("    [i] Brute-force K-NN Request: {} seconds.", brute_time);
 
                 double speedup = brute_time / vamana_time;
-                spdlog::info("- Vamana K-NN is {:.2f} times faster than brute-force.", speedup);
+                spdlog::info("    [i] Vamana K-NN is {:.2f} times faster than brute-force.", speedup);
             }
 
-            kNNs = vamana.greedySearchNearestNeighbors(vamana.medoid_idx, q, k, L);
-            std::vector<int> gt_k(ground_truth[idx].begin(), ground_truth[idx].begin() + k);
+            kNNs = vamana.greedySearchNearestNeighbors(vamana.medoid_idx, q, conf.kNN, conf.max_candinates);
+            std::vector<int> gt_k(ground_truth[idx].begin(), ground_truth[idx].begin() + conf.kNN);
 
             total += intersectionSize(kNNs, gt_k);
         }
 
-        // Calculate recall percentage.
-        spdlog::info("total: {}", total);
-        float recall = static_cast<float>(total) / (k * (query_points.size() + 1)) * 100;
-        spdlog::info("- Recall@{}: {:.2f}%.", k, recall);
+        spdlog::info("[+] Calculating the recall percentage..");
+        spdlog::info("    [i] correct: {}", total);
+        spdlog::info("    [i] query_points: {}", query_points.size());
+        spdlog::info("    [i] k: {}", conf.kNN);
+        spdlog::info("    [i] *: {}", (conf.kNN * (query_points.size() + 1)) * 100);
+        float recall = static_cast<float>(total) / (conf.kNN * (query_points.size() + 1)) * 100;
+        spdlog::info("    [i] Recall@{}: {:.2f}%.", conf.kNN, recall);
 
         return EXIT_SUCCESS;
     }
