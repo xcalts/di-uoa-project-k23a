@@ -1,8 +1,62 @@
 #ifndef FILTERED_VAMANA_H
 #define FILTERED_VAMANA_H
 
+#include <map>
 #include "vamana.h"
+#include <vector>
+#include <cstdlib> // For rand()
+#include <ctime>   // For seeding rand()
+#include <limits> // For INT_MAX
 
+
+/**
+ * @brief
+ * Randomly sample tau points from a given vector 
+ * @param Pf
+ * The vector with integers
+ * @param tau
+ * The number of random points from the vector that will be returned
+ * @return 
+ * A vector with random tau points from Pf without duplicates
+ */
+std::vector<int> random_sample(std::vector<int>& Pf, int tau) {
+    //  vector of all the indexes
+    std::vector<int> all_points = Pf;
+    //  vector with the tau random points out of all_points
+    std::vector<int> sampled_points;
+    int n = all_points.size();
+    for (int i = 0; i < tau && n > 0; ++i) {
+        int rand_index = rand() % n; // random index
+        sampled_points.push_back(all_points[rand_index]);
+        all_points.erase(all_points.begin() + rand_index); // remove chosen point to avoid duplicates
+        --n; // decrease size of available points
+    }
+
+    return sampled_points;
+}
+
+/**
+ * @brief
+ * Select the point with the smallest load from the vector rf according to the map T
+ * @param T
+ * A map with the index of points and their load
+ * @param rf
+ * A vector with the indexes of points
+ * @return 
+ * The index of a point in the rf with the minimum load
+ */
+int select_least_loaded(const std::map<int, int>& T, const std::vector<int>& rf) {
+    int min_load = INT_MAX;
+    int selected_point = -1;
+
+    for (int point : rf) {
+        if (T.at(point) < min_load) {
+            min_load = T.at(point);
+            selected_point = point;
+        }
+    }
+    return selected_point;
+}
 
 /**
  * @brief
@@ -148,7 +202,7 @@ public:
             }
         }
 
-        // return [closest k points from L; V]
+        // return closest k points from L
         if (L.size() > k)
             L.resize(k);
 
@@ -156,6 +210,76 @@ public:
 
     }
 
+     /**
+     * @brief
+     * Calculate the medoid of the dataset.
+     * The medoid of the dataset is similar in concept to mean or centroid, but the medoid is always restricted to be a member of the data set.
+     * This function calculates the total distance from each point to all other points and then select the point with the smallest total distance as the medoid.
+     * @param data
+     * The dataset that you want to calculate the medoid for.
+     * @param tau
+     * The threshold to select tau random numbers.
+     * @return int
+     * The index to the Medoid.
+     */
+    std::map <int ,  int> FindMedoid(std::vector<Point> data , int tau)
+    {
+        
+        
+        //  a map with the load of each point
+        std::map<int, int> T;
+
+        //  a map with all the available filters {category  , medoid_idx}
+        std::map <int ,  int> fmap ;
+
+        //  a map {category  , vector with the idx of compatible points }
+        std::map <int , std::vector<int>> Pf;
+
+        //  for each point if the dataset
+        for(Point &f : data){
+            
+            //  initialize T map to 0
+            T[f.index] = 0 ;
+
+            //  if the filter is in the map
+            if(fmap.find(f.category) != fmap.end()){
+                // create a v
+                std::vector<int> pf = Pf[f.category];
+                pf.push_back(f.index);
+                Pf[f.category] = pf;
+            }
+            //  if the category of that point is not on the map 
+            else{
+                //  add the filter to the map with idx -1 
+                fmap[f.category] = -1;
+                //  create a vector for that filter 
+                std::vector<int> pf;
+                //  add point idx
+                pf.push_back(f.index);
+                //  add vector to the map of filters
+                Pf[f.category] = pf;
+            }
+        }
+
+        //  for each filter
+        for(auto filter : Pf){
+            std::vector<int> rf;
+            //  randomly select tau point out of Pf
+            rf = random_sample(filter.second , tau);
+            int p_star;
+            //  select medoid with minimum T out of Pf
+            p_star = select_least_loaded(T, rf);
+            //  add p_star as medoid to current filter
+            fmap[filter.first] = p_star;
+            //  increase T count
+            T[p_star] = T[p_star] + 1;
+        }
+
+        return fmap;
+
+    }
+
+    
 };
 
 #endif // FILTERED_VAMANA_H

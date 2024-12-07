@@ -42,33 +42,6 @@ int main(int argc, char **argv) {
     std::vector<Point> query_points = parse_query_file(query_path, num_query_dimensions);
     std::cout << "Number of query points: " << query_points.size() << std::endl;
 
-    // Print the first 10 data points for testing
-    std::cout << "\nFirst 10 data points:\n";
-    for (int i = 0; i < std::min(25, static_cast<int>(data_points.size())); ++i) {
-        const Point &p = data_points[i];
-        std::cout << "Point " << p.index << ": \n";
-        std::cout << "Category :  " << p.category << "\t";
-        std::cout << "Timestamp : " << p.lower_timestamp << "\n";
-        //for (float value : p.vec) {
-        //    std::cout << value << " ";
-        //}
-        std::cout << "\n";
-    }
-
-    // Print the first 5 query points for testing
-    std::cout << "\nFirst 5 query points:\n";
-    for (int i = 0; i < std::min(40, static_cast<int>(query_points.size())); ++i) {
-        const Point &q = query_points[i];
-        std::cout << "Query " << q.index << ": ";
-        std::cout << "Query_type :  " << q.query_type << "\t";
-        std::cout << "Query_category : " << q.category << "\t";
-        std::cout << "lower bound : " << q.lower_timestamp << "\t";
-        std::cout << "upper bound : " << q.upper_timestamp << "\n";
-        //for (float value : q.vec) {
-        //    std::cout << value << " ";
-        //}
-        std::cout << "\n";
-    }
     
     // Initializing the `Vamana` object.
     FilteredVamana vamana = FilteredVamana(data_points , query_points );
@@ -82,16 +55,12 @@ int main(int argc, char **argv) {
 
     compatible = check_filters(p , q);
 
-    std::cout << "compatibillity of p and q is " << compatible << "\n";
+    std::cout << "compatibillity of p and q is " << compatible << "\n\n";
 
-    std::cout << "\n\n";
-
-    /*
-    std::pair<std::vector<Edge> , std::vector<int>> test=vamana.filteredGreedySearch({0,1} , 0 , 6 , 10 , 0);
-    for(Edge &E : test.first){
-        std::cout<<E.to_index<<"\t";
+    std::map <int ,  int> Mf = vamana.FindMedoid(data_points , 5);
+    for (auto medoid : Mf) {
+        std::cout << "filter category : "<< medoid.first << "\twith medoid: \t" << medoid.second <<std::endl;
     }
-    std::cout << "\n";    
-    */
+    
     return 0;
 }
