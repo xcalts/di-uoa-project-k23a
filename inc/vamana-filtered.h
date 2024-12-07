@@ -1,39 +1,23 @@
-#ifndef VAMANA_H
-#define VAMANA_H
+#ifndef VAMANA_FILTERED_H
+#define VAMANA_FILTERED_H
 
 /**********************/
 /* Standard Libraries */
 /**********************/
-
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <numeric>
-#include <queue>
-#include <string>
-#include <unordered_set>
 #include <vector>
-
-/**********************/
-/* External Libraries */
-/**********************/
-
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/basic_file_sink.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
 
 /***************/
 /* Definitions */
 /***************/
 
-class Edge;
-class Point;
-class Vamana;
-std::vector<Point> parseFvecsFile(const std::string &);
-std::vector<std::vector<int>> parseIvecsFile(const std::string &);
-int intersectionSize(const std::vector<int> &, const std::vector<int> &);
-std::vector<int> generateSigma(int);
+class F_Point;
+class F_Edge;
+class F_Vamana;
+int checkFilters(F_Point &, F_Point &);
+std::vector<F_Point> parseDummyQueries(const std::string &, const int);
+std::vector<F_Point> parseDummyData(const std::string &, const int);
 float euclideanDistance(const std::vector<float> &, const std::vector<float> &);
+std::vector<int> generateSigma(int);
 
 /*******************/
 /* Implementations */
@@ -43,7 +27,7 @@ float euclideanDistance(const std::vector<float> &, const std::vector<float> &);
  * @brief
  * It represents a directed edge from one node to another with an associated weight.
  */
-class Edge
+class F_Edge
 {
 public:
     /**
@@ -66,7 +50,7 @@ public:
      * @param
      * _weight The weight of the `Edge`.
      */
-    Edge(int _to_index, float _weight)
+    F_Edge(int _to_index, float _weight)
     {
         to_index = _to_index;
         weight = _weight;
@@ -77,7 +61,7 @@ public:
  * @brief
  * It represents a point in the dataset that contains a vector of X dimensions.
  */
-class Point
+class F_Point
 {
 public:
     /**
@@ -91,6 +75,44 @@ public:
     int dimensions;
 
     /**
+     * @brief
+     * Query type for hybrid vector queries.
+     * If 0: Vector-only query.
+     * If 1: Query with categorical constraint ( C = v ).
+     * If 2: Query with timestamp range ( l <= T <= r ).
+     * If 3: Query with both constraints ( C = v ) and ( l <= T <= r ).
+     */
+    int query_type;
+
+    /**
+     * @brief
+     * Categorical attribute associated with the `Point`.
+     * The specific query value v for the categorical attribute.
+     *
+     *     - For queries: used as the equality predicate ( C = v ).
+     *
+     *     - For dataset points: represents the category of the point.
+     *
+     * If not queried,takes -1.
+     */
+    int category;
+
+    /**
+     * @brief
+     * Lower bound of the timestamp range (for queries).
+     * Used only when ( `query_type` = `2` ) or ( `query_type` = `3` ).
+     * If not queried, takes `-1`.
+     */
+    float lower_timestamp;
+
+    /**
+     * @brief Upper bound of the timestamp range (for queries).
+     *  Used only when ( `query_type` = 2 ) or ( `query_type` = `3` ).
+     *  If not queried,takes `-1`.
+     */
+    float upper_timestamp;
+
+    /**
      * @brief The vector data of the `Point`.
      */
     std::vector<float> vec;
@@ -98,18 +120,26 @@ public:
     /**
      * @brief The outgoing edges.
      */
-    std::vector<Edge> outgoing_edges;
+    std::vector<F_Edge> outgoing_edges;
 
     /**
-     * @brief Construct a new `Point` simplified object.
+     * @brief Construct a new `Point` object.
      * @param idx Unique identifier of the `Point` in the dataset.
      * @param vector_data The vector data of the `Point`.
+     * @param q_type Query type (0, 1, 2, 3).
+     * @param cat Categorical attribute predicate (or -1 if not applicable).
+     * @param ts_low Lower bound of timestamp range (or -1 if not applicable).
+     * @param ts_high Upper bound of timestamp range (or -1 if not applicable).
      */
-    Point(int idx, const std::vector<float> &vector_data)
+    F_Point(int idx, const std::vector<float> &vector_data, int q_type, int cat, float lower, float upper)
     {
         index = idx;
         dimensions = vector_data.size();
         vec = vector_data;
+        query_type = q_type;
+        category = cat;
+        lower_timestamp = lower;
+        upper_timestamp = upper;
     }
 
     /**
@@ -117,14 +147,14 @@ public:
      * @param neighbor
      * @param weight
      */
-    void addNeighbor(Point &neighbor, float weight)
+    void addNeighbor(F_Point &neighbor, float weight)
     {
         // Ensure we're not adding a self-loop
         if (neighbor.index != this->index)
         {
             // Check if an edge to this neighbor already exists
             bool already_connected = false;
-            for (const Edge &edge : outgoing_edges)
+            for (const F_Edge &edge : outgoing_edges)
             {
                 if (edge.to_index == neighbor.index)
                 {
@@ -141,9 +171,9 @@ public:
 
 /**
  * @brief
- * It respresents a set of utilities required by the Vamana indexing algorithm.
+ * It respresents a set of utilities required by the Filtered Vamana indexing algorithm.
  */
-class Vamana
+class F_Vamana
 {
 private:
     /**
@@ -165,7 +195,7 @@ private:
         // For each point in the dataset
         for (int i = 0; i < dataset_size; ++i)
         {
-            Point &p = dataset[i];
+            F_Point &p = dataset[i];
             int num_of_edges = R;
 
             std::unordered_set<int> neighbors;
@@ -185,7 +215,7 @@ private:
             // Add outgoing edges to the selected neighbors
             for (int neighbor_idx : neighbors)
             {
-                Point &neighbor = dataset[neighbor_idx];
+                F_Point &neighbor = dataset[neighbor_idx];
                 p.addNeighbor(neighbor, euclideanDistance(p.vec, neighbor.vec));
             }
         }
@@ -207,7 +237,7 @@ private:
         // Loop through each outgoing edge for the specified point
         for (size_t i = 0; i < dataset[p_idx].outgoing_edges.size(); ++i)
         {
-            const Edge &edge = dataset[p_idx].outgoing_edges[i];
+            const F_Edge &edge = dataset[p_idx].outgoing_edges[i];
             oss << "(" << edge.to_index << ", " << edge.weight << ")";
 
             // Add a comma separator if it's not the last element
@@ -248,9 +278,9 @@ private:
 public:
     /**
      * @brief
-     * It contains all the `Point`s of the `dataset`.
+     * It contains all the `F_Point`s of the `dataset`.
      */
-    std::vector<Point> dataset;
+    std::vector<F_Point> dataset;
 
     /**
      * @brief
@@ -270,7 +300,7 @@ public:
      * @param _dataset
      * The dataset.
      */
-    Vamana(std::vector<Point> &_dataset)
+    F_Vamana(std::vector<F_Point> &_dataset)
     {
         dataset = _dataset;
         dataset_size = _dataset.size();
@@ -317,7 +347,7 @@ public:
 
     /**
      * @brief
-     * It prunes the list of candidate neighbors for a given `Point` based on a
+     * It prunes the list of candidate neighbors for a given `F_Point` based on a
      * pruning condition that involves an `alpha` scaling factor.
      * It ensures that the `Point` has at most R outgoing edges to its nearest neighbors.
      * @param p_idx
@@ -332,8 +362,8 @@ public:
     void robustPrune(int p_idx, std::vector<int> &V, float a, int R)
     {
         // V ← (V ∪ Nout(p)) \ {p}
-        std::vector<Edge> &p_edges = dataset[p_idx].outgoing_edges;
-        for (Edge &e : p_edges)
+        std::vector<F_Edge> &p_edges = dataset[p_idx].outgoing_edges;
+        for (F_Edge &e : p_edges)
             if ((std::find(V.begin(), V.end(), e.to_index)) == V.end())
                 V.push_back(e.to_index);
 
@@ -362,9 +392,9 @@ public:
             if (std::find_if(
                     p_edges.begin(),
                     p_edges.end(),
-                    [pstar_idx](const Edge &edge)
+                    [pstar_idx](const F_Edge &edge)
                     { return edge.to_index == pstar_idx; }) == p_edges.end())
-                p_edges.push_back(Edge(pstar_idx, pstar_dist));
+                p_edges.push_back(F_Edge(pstar_idx, pstar_dist));
 
             // if |Nout(p)| = R then break
             if (p_edges.size() == R)
@@ -438,7 +468,7 @@ public:
             }
 
             // update L ← L ∪ Nout(p∗)
-            for (Edge &edge : dataset[pstar_idx].outgoing_edges)
+            for (F_Edge &edge : dataset[pstar_idx].outgoing_edges)
                 if (edge.to_index != query_idx && std::find(L.begin(), L.end(), edge.to_index) == L.end())
                     L.push_back(edge.to_index);
 
@@ -483,7 +513,7 @@ public:
      * Maximum size of the candidate list L.
      * @return A pair of vectors: the list of found nodes and the list of visited nodes.
      */
-    std::vector<int> greedySearchNearestNeighbors(int source_idx, Point &query_point, int k, int L_size)
+    std::vector<int> greedySearchNearestNeighbors(int source_idx, F_Point &query_point, int k, int L_size)
     {
         std::vector<int> L;
         std::vector<int> V;
@@ -519,7 +549,7 @@ public:
             }
 
             // update L ← L ∪ Nout(p∗)
-            for (Edge &edge : dataset[pstar_idx].outgoing_edges)
+            for (F_Edge &edge : dataset[pstar_idx].outgoing_edges)
                 if (std::find(L.begin(), L.end(), edge.to_index) == L.end())
                     L.push_back(edge.to_index);
 
@@ -555,19 +585,19 @@ public:
      * @brief
      * Brute force calculation of the k nearest neighbors of a given query point.
      * @param query_point
-     * The query `Point` (can be a new point or one from the dataset).
+     * The query `F_Point` (can be a new point or one from the dataset).
      * @param k
      * The number of nearest neighbors to find.
      * @return
      * A vector of indices of the k nearest neighbors in the dataset.
      */
-    std::vector<int> bruteForceNearestNeighbors(const Point &query_point, int k)
+    std::vector<int> bruteForceNearestNeighbors(const F_Point &query_point, int k)
     {
         // Vector to store pairs of distance and index
         std::vector<std::pair<float, int>> distances;
 
         // Compute distance from the query point to every point in the dataset
-        for (const Point &p : dataset)
+        for (const F_Point &p : dataset)
         {
             float dist = euclideanDistance(query_point.vec, p.vec);
             distances.push_back(std::make_pair(dist, p.index));
@@ -634,7 +664,7 @@ public:
             spdlog::debug("# Neighbors(σ({}))) ← {}", i, neighborsTable(sigma[i]));
 
             // for all points j in Neighbors(σ(i))
-            for (Edge &e : dataset[sigma[i]].outgoing_edges)
+            for (F_Edge &e : dataset[sigma[i]].outgoing_edges)
             {
                 int j_idx = e.to_index;
 
@@ -645,7 +675,7 @@ public:
                     dataset[j_idx].outgoing_edges.begin(),
                     dataset[j_idx].outgoing_edges.end(),
                     W.begin(),
-                    [](const Edge &edge)
+                    [](const F_Edge &edge)
                     { return edge.to_index; });
 
                 W.push_back(sigma[i]);
@@ -665,7 +695,7 @@ public:
                 // |W| < R | => update Neighbors(j) ← Neighbors(j) U {sigma(i)}
                 else
                 {
-                    dataset[j_idx].outgoing_edges.push_back(Edge(sigma[i], euclideanDistance(dataset[sigma[i]].vec, dataset[j_idx].vec)));
+                    dataset[j_idx].outgoing_edges.push_back(F_Edge(sigma[i], euclideanDistance(dataset[sigma[i]].vec, dataset[j_idx].vec)));
 
                     spdlog::debug("+ |W| < R => Neighbors(j) ← Neighbors(j) U {}", R, j_idx, j_idx, sigma[i]);
                     spdlog::debug("# Neighbors(j) = {}", neighborsTable(j_idx));
@@ -681,111 +711,147 @@ public:
 
 /**
  * @brief
- * Parse a `.fvecs` file.
- * @param fvecs_filepath
- * The path to the `.fvecs` file.
+ * Checks compatibility between a query and a dataset point.
+ * @param P
+ * The struct of the dataset point.
+ * @param Q
+ * The struct of the query point.
+ * @return A true or false value is returned: 1 if the points are compatible or 0 if they are not compatible.
+ */
+int checkFilters(F_Point &p, F_Point &q)
+{
+    if (q.query_type == 0)
+        return 1;
+    else if (q.query_type == 1 && p.category == q.category)
+        return 1;
+    else if (q.query_type == 2 && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp)
+        return 1;
+    else if (q.query_type == 3 && p.category == q.category && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp)
+        return 1;
+    return 0;
+}
+
+/**
+ * @brief Parse a `bin` file  dummy-queries.
+ * @param file_path The path to the `bin` file.
+ * @param no_dimensions The dimensions of each point
  * @return std::vector<Point>
  */
-std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath)
+std::vector<F_Point> parseDummyQueries(const std::string &file_path, const int no_dimensions)
 {
-    std::vector<Point> points;
-    std::ifstream fvecs(fvecs_filepath, std::ios::binary);
-    int idx = 0;
+    // Opening the file
+    std::ifstream ifs;
+    ifs.open(file_path, std::ios::binary);
+    assert(ifs.is_open());
 
-    while (fvecs)
+    // 1. The first four bytes(int) represent the number of points in the file.
+    uint32_t N; // num of points
+    ifs.read((char *)&N, sizeof(uint32_t));
+
+    // vector that consists all points
+    std::vector<F_Point> points;
+    // points.reserve(N); // reserve space for the points it is optional
+
+    // buffer for reading each point
+    std::vector<float> buff(no_dimensions);
+
+    // 2. Read and parse each point
+    for (int idx = 0; idx < N; ++idx)
     {
-        int dimensions;
-
-        // 1. The first four bytes(int) represent the number of dimensions of the vector data.
-        fvecs.read(reinterpret_cast<char *>(&dimensions), sizeof(int));
-
-        if (!fvecs)
+        // 3. Read point and store it in buff
+        if (!ifs.read(reinterpret_cast<char *>(buff.data()), no_dimensions * sizeof(float)))
             break;
 
-        std::vector<float> v(dimensions);
+        // 4. Parse metadata
+        int q_type = static_cast<int>(buff[0]);
+        int category = static_cast<int>(buff[1]);
+        float lower = buff[2];
+        float upper = buff[3];
 
-        // 2. Read the rest of the values as a vector of size `vector_no_dimensions`.
-        fvecs.read(reinterpret_cast<char *>(v.data()), dimensions * sizeof(float));
+        // 5. Parse vector data (excluding the first 4 metadata values)
+        std::vector<float> row(buff.begin() + 4, buff.end());
 
-        // 3. Create a new `Point` object.
-        Point new_point = Point(idx, v);
+        // 6. Create a new F_Point object.
+        F_Point new_point = F_Point(idx, row, q_type, category, lower, upper);
 
-        // 4. Add it to the database.
+        // 7. Add it to the database.
         points.push_back(new_point);
-
-        // 5. Incremnt index.
-        idx++;
     }
+    // 8. Close file and return the database
+    ifs.close();
 
-    fvecs.close();
+    return points;
+}
+
+/**
+ * @brief Parse a `bin` file  dummy-data
+ * @param bin_filepath The path to the `bin` file.
+ * @param num_dimensions The dimensions of each point
+ * @return std::vector<Point>
+ */
+std::vector<F_Point> parseDummyData(const std::string &file_path, const int no_dimensions)
+{
+    // Opening the file
+    std::ifstream ifs;
+    ifs.open(file_path, std::ios::binary);
+    assert(ifs.is_open());
+
+    // 1. The first four bytes(int) represent the number of points in the file.
+    uint32_t N; // num of points
+    ifs.read((char *)&N, sizeof(uint32_t));
+
+    // vector that consists all points
+    std::vector<F_Point> points;
+
+    // buffer for reading each point
+    std::vector<float> buff(no_dimensions);
+
+    // 2. Read and parse each point
+    for (int idx = 0; idx < N; ++idx)
+    {
+        // 3. Read point and store it in buff
+        if (!ifs.read(reinterpret_cast<char *>(buff.data()), no_dimensions * sizeof(float)))
+        {
+            std::cerr << "Error reading point data at index " << idx << std::endl;
+            break;
+        }
+
+        // 4. Parse metadata
+        int category = static_cast<int>(buff[0]);
+        float timestamp = static_cast<int>(buff[1]);
+
+        // 5. Parse vector data (excluding the first 4 metadata values)
+        std::vector<float> row(buff.begin() + 2, buff.end());
+
+        // 6. Create a new Point object placing the category in the category argument an timestamp in both bounds(lower , upper).
+        F_Point new_point = F_Point(idx, row, -1, category, timestamp, timestamp);
+
+        // 7. Add it to the database.
+        points.push_back(new_point);
+    }
+    // 8. Close file and return the database
+    ifs.close();
 
     return points;
 }
 
 /**
  * @brief
- * Parse a `.ivecs` file.
- * @param ivecs_filepath
- * The path to the `.ivecs` file.
- * @return std::vector<std::vector<int>>
+ * Calculate the euclidean distance between two vectors `a` and `b`.
+ * @param a
+ * The first `vector`.
+ * @param b
+ * The second `vector`.
+ * @return float
  */
-std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
+float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b)
 {
-    std::vector<std::vector<int>> ground_truth;
+    float sum = 0.0f;
 
-    std::ifstream ivecs(ivecs_filepath, std::ios::binary);
-    while (ivecs)
-    {
-        // 1. The first four bytes(int) represent the number of dimensions of the vector data.
-        int dimensions = 0;
-        ivecs.read(reinterpret_cast<char *>(&dimensions), sizeof(int));
+    for (size_t i = 0; i < a.size(); ++i)
+        sum += std::pow(a[i] - b[i], 2);
 
-        if (!ivecs)
-            break;
-
-        std::vector<int> v(dimensions);
-
-        // 2. Read the rest of the values as a vector of size `_dimensions`.
-        ivecs.read(reinterpret_cast<char *>(v.data()), dimensions * sizeof(int));
-
-        // 4. Add it to the database.
-        ground_truth.push_back(v);
-    }
-
-    ivecs.close();
-
-    return ground_truth;
-}
-
-/**
- * @brief
- * Computes the size of the intersection of two integer vectors.
- *
- * This function takes two vectors of integers, converts them to unordered sets
- * to remove duplicates, and then calculates the number of elements that are
- * present in both sets.
- *
- * @param a The first vector of integers.
- * @param b The second vector of integers.
- * @return The number of elements that are present in both vectors.
- */
-int intersectionSize(const std::vector<int> &a, const std::vector<int> &b)
-{
-    // Convert vectors to unordered sets to remove duplicates
-    std::unordered_set<int> set_a(a.begin(), a.end());
-    std::unordered_set<int> set_b(b.begin(), b.end());
-
-    int count = 0;
-
-    // Iterate through the smaller set for efficiency
-    if (set_a.size() > set_b.size())
-        std::swap(set_a, set_b);
-
-    for (const int &e : set_a)
-        if (set_b.find(e) != set_b.end())
-            count++;
-
-    return count;
+    return std::sqrt(sum);
 }
 
 /**
@@ -809,23 +875,4 @@ std::vector<int> generateSigma(int n)
     return sigma;
 }
 
-/**
- * @brief
- * Calculate the euclidean distance between two vectors `a` and `b`.
- * @param a
- * The first `vector`.
- * @param b
- * The second `vector`.
- * @return float
- */
-float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b)
-{
-    float sum = 0.0f;
-
-    for (size_t i = 0; i < a.size(); ++i)
-        sum += std::pow(a[i] - b[i], 2);
-
-    return std::sqrt(sum);
-}
-
-#endif // VAMANA_H
+#endif // VAMANA_FILTERED_H

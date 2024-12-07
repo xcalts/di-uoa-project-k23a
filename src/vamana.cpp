@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 
         if (cmdl({"-h", "--help"}) || argc == 1)
         {
-            std::cout << "Usage: ./k23a --conf ./conf.yaml" << std::endl;
+            std::cout << "Usage: ./vamana --conf ./conf.yaml" << std::endl;
             return EXIT_FAILURE;
         }
 

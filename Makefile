@@ -1,39 +1,46 @@
+#############
+# Variables #
+#############
 CXX = g++
 CXXFLAGS = -std=c++14 -I./inc -I./libs
-
 SRC_DIR = src
 TESTS_DIR = tests
 BIN_DIR = bin
 SRC_OBJ_DIR = obj
 TESTS_OBJ_DIR = test_obj
+TARGETS = clean vamana vamana-filtered unitests 
 
-# Vamana Indexing
+##########
+# Vamana #
+##########
 VAMANA_SRC = $(SRC_DIR)/vamana.cpp
 VAMANA_OBJ = $(SRC_OBJ_DIR)/vamana.o
 
-# Filtered Vamana Indexing
-FILTERED_VAMANA_SRC = $(SRC_DIR)/filtered_vamana.cpp
-FILTERED_VAMANA_OBJ = $(SRC_OBJ_DIR)/filtered_vamana.o
+###################
+# Filtered Vamana #
+###################
+FILTERED_VAMANA_SRC = $(SRC_DIR)/vamana-filtered.cpp
+FILTERED_VAMANA_OBJ = $(SRC_OBJ_DIR)/vamana-filtered.o
 
-# Unit Tests
+##############
+# Unit Tests #
+##############
 UNIT_TESTS_SRC = $(TESTS_DIR)/unitests.cpp
 UNIT_TESTS_OBJ = $(TESTS_OBJ_DIR)/unitests.o
 
-TARGETS = clean vamana unitests 
+#########
+# Rules #
+#########
 
-all: $(TARGETS)
-
-# Compile the Vamana Indexing.
+all: $(TARGETS)                   
 $(VAMANA_OBJ): $(VAMANA_SRC)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Compile the Filtered Vamana Indexing.
-$(FILTERED_VAMANA_OBJ): $(FILTERED_VAMANA_SRC)
+$(FILTERED_VAMANA_OBJ): $(FILTERED_VAMANA_SRC) 
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Compile the Unit Tests.
 $(UNIT_TESTS_OBJ): $(UNIT_TESTS_SRC)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -43,8 +50,8 @@ $(BIN_DIR)/vamana: $(VAMANA_OBJ)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(VAMANA_OBJ) -o $@
 
-filtered_vamana: $(BIN_DIR)/filtered_vamana
-$(BIN_DIR)/filtered_vamana: $(FILTERED_VAMANA_OBJ)
+vamana-filtered: $(BIN_DIR)/vamana-filtered
+$(BIN_DIR)/vamana-filtered: $(FILTERED_VAMANA_OBJ)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(FILTERED_VAMANA_OBJ) -o $@
 
@@ -65,4 +72,4 @@ clean:
 test: unitests vamana
 	$(BIN_DIR)/unitests
 
-.PHONY: all clean vamana filtered_vamana unitests debug release
+.PHONY: all clean vamana vamana_filtered unitests debug release

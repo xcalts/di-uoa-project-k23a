@@ -34,6 +34,10 @@ void test_configuration_initialization()
     config_file << "alpha: 0.5\n";
     config_file << "max_candinates: 100\n";
     config_file << "max_edges: 10\n";
+    config_file << "dummy_data_filepath: \"dummy_data.bin\"\n";
+    config_file << "dummy_queries_filepath: \"dummy_queries_filepath.bin\"\n";
+    config_file << "data_dimensions: 10\n";
+    config_file << "queries_dimensions: 10\n";
     config_file.close();
 
     // Initialize the Configuration object
