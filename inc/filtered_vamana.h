@@ -212,20 +212,17 @@ public:
 
      /**
      * @brief
-     * Calculate the medoid of the dataset.
-     * The medoid of the dataset is similar in concept to mean or centroid, but the medoid is always restricted to be a member of the data set.
-     * This function calculates the total distance from each point to all other points and then select the point with the smallest total distance as the medoid.
-     * @param data
-     * The dataset that you want to calculate the medoid for.
+     * Calculate the medoids of the dataset P with associated filters.
+     * For each filter in the dataset it searches for the compatible points and chooses a medoid.
+     * @param P
+     * The dataset that you want to calculate the medoids for each filter.
      * @param tau
-     * The threshold to select tau random numbers.
-     * @return int
-     * The index to the Medoid.
+     * Randomly sample tau point IDs in the Pf of each filter.
+     * By choosing a small, random subset of points from Pf it makes the algorithm more efficient.
+     * @return map<int,int> 
+     * A map with the filter category and the index of the medoid.
      */
-    std::map <int ,  int> FindMedoid(std::vector<Point> data , int tau)
-    {
-        
-        
+    std::map <int ,  int> FindMedoid(std::vector<Point> P , int tau){
         //  a map with the load of each point
         std::map<int, int> T;
 
@@ -236,7 +233,7 @@ public:
         std::map <int , std::vector<int>> Pf;
 
         //  for each point if the dataset
-        for(Point &f : data){
+        for(Point &f : P){
             
             //  initialize T map to 0
             T[f.index] = 0 ;
@@ -274,9 +271,7 @@ public:
             //  increase T count
             T[p_star] = T[p_star] + 1;
         }
-
         return fmap;
-
     }
 
     
