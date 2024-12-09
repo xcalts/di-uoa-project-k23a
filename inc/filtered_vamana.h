@@ -65,20 +65,22 @@ int select_least_loaded(const std::map<int, int>& T, const std::vector<int>& rf)
  * The struct of the dataset point
  * @param Q
  * The struct of the query point
+ * @param q_type
+ * The type of the query for comparison
  * @return A true or false value is returned :
  * 1 if the points are compatible or  0 if they are not compatible
  */
-int check_filters(Point &p ,Point &q){
-    if (q.query_type == 0){
+int check_filters(Point &p ,Point &q ,int q_type){
+    if (q_type == 0){
         return 1;
     }
-    else if (q.query_type == 1 && p.category == q.category){
+    else if (q_type == 1 && p.category == q.category){
         return 1;
     }
-    else if (q.query_type == 2 && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp ){
+    else if (q_type == 2 && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp ){
         return 1;
     }
-    else if (q.query_type == 3 && p.category == q.category && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp ){
+    else if (q_type == 3 && p.category == q.category && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp ){
         return 1;
     }
     return 0;
@@ -93,10 +95,6 @@ public:
     // Constructor inheriting the Vamana constructor
     FilteredVamana(std::vector<Point>& _dataset) : Vamana(_dataset) {}
     FilteredVamana(std::vector<Point>& _dataset, std::vector<Point>& _queryset) : Vamana(_dataset, _queryset) {}
-
-    // Overriding or extending methods
-
-
     
     
     /**
@@ -104,8 +102,8 @@ public:
      * Greedy search algorithm.
      * @param S 
      * The set of the starting points.
-     * @param query_idx
-     * Index of the query node.
+     * @param query_vector
+     * Point of the query.
      * @param k
      * Number of nearest neighbors to find.
      * @param L_size
@@ -115,22 +113,21 @@ public:
      * @return std::pair<std::vector<Edge>, std::vector<int>>
      * A pair of vectors: the list of the `L_size` nearest neighbors and the list of visited nodes.
     */
-    std::pair<std::vector<Edge> , std::vector<int>> filteredGreedySearch(std::vector<int> S, int query_idx, int k, int L_size , int filter_q)
+    std::pair<std::vector<Edge> , std::vector<int>> filteredGreedySearch(std::vector<int> S, Point* query_vector, int k, int L_size , int filter_q)
     {
         std::vector<Edge> L;            // Candidate points
         std::vector<int> V;             // Visited points
         std::vector<Edge> L_minus_V;    // L \ V
 
         Point* P = nullptr;
-        Point* Q = nullptr;
+        Point* Q = query_vector;
 
         //  random source_idx for each filter 
         //  S is a set of start points for each filter        
         //  iterates over the start points and adds the index and distance to the search list if they match
         for(int s : S){
             P = &dataset[s];
-            Q = &queryset[query_idx];
-            if (check_filters(*P , *Q)){
+            if (check_filters(*P , *Q , filter_q)){
                 L.emplace_back(s , euclideanDistance(P->vec , Q->vec));
             }
         }
@@ -155,7 +152,7 @@ public:
             for(Edge &N : L_minus_V){
                 P = &dataset[N.to_index];
                 //  check if N is compatible
-                if(check_filters(*P , *Q)){
+                if(check_filters(*P , *Q , filter_q)){
                     if ( N.weight < closest_distance ){
                         closest_distance = N.weight;
                         min = N.to_index;
@@ -174,7 +171,7 @@ public:
             for(Edge &N : P->outgoing_edges){
                 //  if edge is not in visited , is compatible and is not already in the L vector
                 // (std::find_if(L.begin(), L.end(), [&N](const Edge& edge) {return edge.to_index == N.to_index}))
-                if( (std::find(V.begin(), V.end(),  N.to_index) == V.end()) && (check_filters( dataset[N.to_index] , *Q) == 1) ){
+                if( (std::find(V.begin(), V.end(),  N.to_index) == V.end()) && (check_filters( dataset[N.to_index] , *Q , filter_q) == 1) ){
                     //  adding the neighbors of P to the queue and their distance from Q
                     L.emplace_back(N.to_index , euclideanDistance(dataset[N.to_index].vec , Q->vec));
                 }
@@ -273,7 +270,199 @@ public:
         }
         return fmap;
     }
+    
+    
 
+    /**
+     * @brief
+     * It prunes the list of candidate neighbors for a given `Point` based on a
+     * pruning condition that involves an `alpha` scaling factor.
+     * It ensures that the `Point` has at most R outgoing edges to its nearest neighbors.
+     * @param p_idx
+     * The node for which we are pruning the candidate neighbors.
+     * @param V
+     * The set of candidate nodes.
+     * @param alpha
+     * The distance threshold.
+     * @param R
+     * The maximum number of outgoing edges.
+     */
+    void FilteredRobustPrune(int p_idx, std::vector<int> &V, float a, int R)
+    {
+        // V ← (V ∪ Nout(p)) \ {p}
+        std::vector<Edge> &p_edges = dataset[p_idx].outgoing_edges;
+        for (Edge &e : p_edges)
+            if ((std::find(V.begin(), V.end(), e.to_index)) == V.end())
+                V.push_back(e.to_index);
+
+        V.erase(std::remove(V.begin(), V.end(), p_idx), V.end());
+
+        // Nout(p) ← {}
+        p_edges.clear();
+
+        // while V != {} do
+        while (!V.empty())
+        {
+            // p∗ ← min(d(p, v), v ∈ V)
+            int pstar_idx = -1;
+            float pstar_dist = std::numeric_limits<float>::max();
+            for (int v_idx : V)
+            {
+                float distance = euclideanDistance(dataset[v_idx].vec, dataset[p_idx].vec);
+                if (distance < pstar_dist)
+                {
+                    pstar_dist = distance;
+                    pstar_idx = v_idx;
+                }
+            }
+
+            // Nout(p) ← Nout(p) ∪ {p∗} (check that p* not in Nout(p))
+            if (std::find_if(
+                    p_edges.begin(),
+                    p_edges.end(),
+                    [pstar_idx](const Edge &edge)
+                    { return edge.to_index == pstar_idx; }) == p_edges.end())
+                p_edges.push_back(Edge(pstar_idx, pstar_dist));
+
+            // if |Nout(p)| = R then break
+            if (p_edges.size() == R)
+                break;
+
+            // for v ∈ V do.
+            std::vector<int> to_remove;
+            for (int v_idx : V)
+            {
+                // if Fv ∪ Fp not a subset in Fp* then continue
+                if(!(dataset[v_idx].category == dataset[p_idx].category && dataset[p_idx].category == dataset[pstar_idx].category)){
+                    continue;
+                }
+
+                float pstar_to_v = euclideanDistance(dataset[pstar_idx].vec, dataset[v_idx].vec);
+                float p_to_v = euclideanDistance(dataset[p_idx].vec, dataset[v_idx].vec);
+
+                // if α · d(p∗, v) ≤ d(p, v) then remove v from V
+                if (a * pstar_to_v <= p_to_v)
+                    to_remove.push_back(v_idx);
+            }
+
+            // remove v from V
+            for (int remove_idx : to_remove)
+                V.erase(std::remove(V.begin(), V.end(), remove_idx), V.end());
+        }
+    }
+
+    
+    /**
+     * @brief
+     * Creates an in-memory index on the supplied nodes to efficiently answer approximate nearest neighbor queries.
+     * The N nodes must already be initialized as a random graph of outgoing edges with maximum of log(N) outgoing edges per node.
+     * @param a
+     * Scaling factor to prune outgoing eges of a node (alpha).
+     * @param L
+     * Maximum list of search candidates to use in graph traversal.
+     * @param R
+     * Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
+     */
+    void FilteredVamanaIndex(float a, int L, int R)
+    {
+        spdlog::debug("+---------------------------+");
+        spdlog::debug("| Vamana Indexing Algorithm |");
+        spdlog::debug("+---------------------------+");
+        spdlog::debug("# a ← {} & L_size ← {} & R ← {} & s ← {}", a, L, R, medoid_idx);
+
+        // initialize G to an empty graph
+        
+
+        // let s denote the medoid of dataset P
+        int s = medoid_idx;
+        
+        // Let st(f) denote the start node for filter label f for every f ∈ F
+        std::map<int ,int> f_and_st = FindMedoid(dataset , 5);
+        std::vector<int> st;
+        for(auto st_p : f_and_st){
+            st.push_back(st_p.first);
+        }
+
+        // let sigma denote a random permutation of 1..n
+        std::vector<int> sigma = generateSigma(dataset_size);
+
+        // Let Fx be the label-set for every x ∈ P 
+        std::vector<int> Fx;
+        for(auto f : f_and_st){
+            Fx.push_back(f.first);
+        }
+
+        // for 1 ≤ i ≤ n do
+        for (int i = 0; i < dataset_size; ++i)
+        {
+            // Let Sfx_σ(i) = { st(f) : f ∈ Fx_σ(i) }   //  sfx is the start point for filter f of database point in position sigma[i]
+            std::vector<int> Sfx;
+            for(auto st_f : f_and_st){
+                if(st_f.first == dataset[sigma[i]].category){
+                    Sfx.push_back(st_f.second);
+                }
+            }
+            //Sfx.push_back(f_and_st.at(dataset[sigma[i]].category));
+
+            // let [L; V] ← GreedySearch(sfx, Xσ(i),0 , L_size , Fx_σ(i))
+            std::pair<std::vector<Edge>,  std::vector<int>> r = filteredGreedySearch(Sfx, &dataset[sigma[i]] , 1, L , 1);
+
+            // Let V ← V ∪ V_Fx_σ(i)
+            //  ********************
+
+            // run RobustPrune(σ(i), V, a, R) to update out-neighbors of σ(i)
+            FilteredRobustPrune(sigma[i], r.second, a, R);
+
+            spdlog::debug("=====================================================================");
+            spdlog::debug("+ GreedySearch(s, σ({}), 1, {})", i, L);
+            spdlog::debug("# V ← {}", vectorTable(r.second));
+            spdlog::debug("+ RobustPrune(σ({}), V, a, R)", i);
+            spdlog::debug("# Neighbors(σ({}))) ← {}", i, neighborsTable(sigma[i]));
+
+            // for all points j in Neighbors(σ(i))
+            for (Edge &e : dataset[sigma[i]].outgoing_edges)
+            {
+                int j_idx = e.to_index;
+
+                // W ← Nout(j) ∪ {σ(i)}
+                std::vector<int> W(dataset[j_idx].outgoing_edges.size());
+
+                std::transform(
+                    dataset[j_idx].outgoing_edges.begin(),
+                    dataset[j_idx].outgoing_edges.end(),
+                    W.begin(),
+                    [](const Edge &edge)
+                    { return edge.to_index; });
+
+                W.push_back(sigma[i]);
+
+                spdlog::debug("---------------------------------------------------------------------");
+                spdlog::debug("# j ← {}", j_idx);
+                spdlog::debug("# Neighbors(j) = {}", neighborsTable(j_idx));
+
+                // |W| > R => run RobustPrune(j, W, a, R) to update out-neighbors of j
+                if (W.size() > R)
+                {
+                    FilteredRobustPrune(j_idx, W, a, R);
+
+                    spdlog::debug("+ |W| > R => RobustPrune(j, W, {}, {})", j_idx, a, R);
+                    spdlog::debug("# Neighbors(j) = {}", neighborsTable(j_idx));
+                }
+                // |W| < R | => update Neighbors(j) ← Neighbors(j) U {sigma(i)}
+                else
+                {
+                    dataset[j_idx].outgoing_edges.push_back(Edge(sigma[i], euclideanDistance(dataset[sigma[i]].vec, dataset[j_idx].vec)));
+
+                    spdlog::debug("+ |W| < R => Neighbors(j) ← Neighbors(j) U {}", R, j_idx, j_idx, sigma[i]);
+                    spdlog::debug("# Neighbors(j) = {}", neighborsTable(j_idx));
+                }
+
+                spdlog::debug("---------------------------------------------------------------------");
+            }
+        }
+
+        spdlog::debug("+---------------------------------------------------------------------------------+");
+    }
     
 };
 
