@@ -4,20 +4,34 @@
 /**********************/
 /* Standard Libraries */
 /**********************/
+
 #include <vector>
+#include <set>
+
+/**********************/
+/* External Libraries */
+/**********************/
+
+#include "progressbar.h"
+
+/**********************/
+/* Project Components */
+/**********************/
+
+#include "misc.h"
 
 /***************/
 /* Definitions */
 /***************/
 
-class F_Point;
 class F_Edge;
+class F_Point;
+class F_Query;
 class F_Vamana;
-int checkFilters(F_Point &, F_Point &);
-std::vector<F_Point> parseDummyQueries(const std::string &, const int);
-std::vector<F_Point> parseDummyData(const std::string &, const int);
-float euclideanDistance(const std::vector<float> &, const std::vector<float> &);
-std::vector<int> generateSigma(int);
+// class S_Vamana;
+
+std::vector<F_Point> parseDummyData(std::string &, int);
+std::vector<F_Query> parseDummyQueries(std::string &, int);
 
 /*******************/
 /* Implementations */
@@ -25,14 +39,14 @@ std::vector<int> generateSigma(int);
 
 /**
  * @brief
- * It represents a directed edge from one node to another with an associated weight.
+ * It represents a directed edge from one point to another with an associated weight.
  */
 class F_Edge
 {
 public:
     /**
      * @brief
-     * The index of the `Point` that the `Edge` points to.
+     * The index of the point that the edge points to.
      */
     int to_index;
 
@@ -44,11 +58,11 @@ public:
 
     /**
      * @brief
-     * Construct a new `Edge` object.
-     * @param
-     * _to_index The index of the `Point` that the `Edge` points to.
-     * @param
-     * _weight The weight of the `Edge`.
+     * Construct a new edge.
+     * @param _to_index
+     * The index of the point that the edge points to.
+     * @param _weight
+     * The weight of the edge.
      */
     F_Edge(int _to_index, float _weight)
     {
@@ -59,102 +73,84 @@ public:
 
 /**
  * @brief
- * It represents a point in the dataset that contains a vector of X dimensions.
+ * It represents a point in the dataset.
  */
 class F_Point
 {
 public:
     /**
-     * @brief Unique identifier of the `Point` in the dataset.
+     * @brief
+     * Index of the point in the dataset.
      */
     int index;
 
     /**
-     * @brief The dimensions of the `Point`'s vector.
+     * @brief
+     * The dimensions of the point's vector.
      */
     int dimensions;
 
     /**
      * @brief
-     * Query type for hybrid vector queries.
-     * If 0: Vector-only query.
-     * If 1: Query with categorical constraint ( C = v ).
-     * If 2: Query with timestamp range ( l <= T <= r ).
-     * If 3: Query with both constraints ( C = v ) and ( l <= T <= r ).
+     * The discretized categorical attribute of the point.
      */
-    int query_type;
+    float C;
 
     /**
      * @brief
-     * Categorical attribute associated with the `Point`.
-     * The specific query value v for the categorical attribute.
-     *
-     *     - For queries: used as the equality predicate ( C = v ).
-     *
-     *     - For dataset points: represents the category of the point.
-     *
-     * If not queried,takes -1.
+     * The normalized timestamp attribute T of the point.
      */
-    int category;
+    float T;
 
     /**
      * @brief
-     * Lower bound of the timestamp range (for queries).
-     * Used only when ( `query_type` = `2` ) or ( `query_type` = `3` ).
-     * If not queried, takes `-1`.
-     */
-    float lower_timestamp;
-
-    /**
-     * @brief Upper bound of the timestamp range (for queries).
-     *  Used only when ( `query_type` = 2 ) or ( `query_type` = `3` ).
-     *  If not queried,takes `-1`.
-     */
-    float upper_timestamp;
-
-    /**
-     * @brief The vector data of the `Point`.
+     * The vector data of the point.
      */
     std::vector<float> vec;
 
     /**
-     * @brief The outgoing edges.
+     * @brief
+     * The edges to neighbor points.
      */
-    std::vector<F_Edge> outgoing_edges;
+    std::vector<F_Edge> edges;
 
     /**
-     * @brief Construct a new `Point` object.
-     * @param idx Unique identifier of the `Point` in the dataset.
-     * @param vector_data The vector data of the `Point`.
-     * @param q_type Query type (0, 1, 2, 3).
-     * @param cat Categorical attribute predicate (or -1 if not applicable).
-     * @param ts_low Lower bound of timestamp range (or -1 if not applicable).
-     * @param ts_high Upper bound of timestamp range (or -1 if not applicable).
+     * @brief
+     * Construct a new point.
+     * @param _index
+     * Index of the point in the dataset.
+     * @param _vec
+     * The vector data of the point.
+     * @param _C
+     * The discretized categorical attribute of the point.
+     * @param _T
+     * The normalized timestamp attribute T of the point.
      */
-    F_Point(int idx, const std::vector<float> &vector_data, int q_type, int cat, float lower, float upper)
+    F_Point(int _index, std::vector<float> &_vec, float _C, float _T)
     {
-        index = idx;
-        dimensions = vector_data.size();
-        vec = vector_data;
-        query_type = q_type;
-        category = cat;
-        lower_timestamp = lower;
-        upper_timestamp = upper;
+        index = _index;
+        dimensions = _vec.size();
+        vec = _vec;
+        C = _C;
+        T = _T;
     }
 
     /**
-     * @brief Add a new neighbor/edge to this `Point`.
+     * @brief
+     * Add a new neighbor to the point.
      * @param neighbor
+     * The neighbor to add.
      * @param weight
+     * The weight of the edge.
      */
-    void addNeighbor(F_Point &neighbor, float weight)
+    void addNeighborPoint(F_Point &neighbor, float weight)
     {
         // Ensure we're not adding a self-loop
         if (neighbor.index != this->index)
         {
             // Check if an edge to this neighbor already exists
             bool already_connected = false;
-            for (const F_Edge &edge : outgoing_edges)
+            for (F_Edge edge : edges)
             {
                 if (edge.to_index == neighbor.index)
                 {
@@ -164,157 +160,296 @@ public:
             }
 
             if (!already_connected)
-                outgoing_edges.emplace_back(neighbor.index, weight);
+                edges.emplace_back(neighbor.index, weight);
         }
+    }
+
+    /**
+     * @brief
+     * Get the indices of the point's neighbors.
+     * @return std::vector<int>
+     */
+    std::vector<int> getNeighborIndices() const
+    {
+        std::vector<int> neighbor_indices;
+        neighbor_indices.reserve(edges.size()); // Reserve space to avoid unnecessary reallocations
+
+        for (F_Edge edge : edges)
+            neighbor_indices.push_back(edge.to_index);
+
+        return neighbor_indices;
+    }
+
+    /**
+     * @brief
+     * Get the indices of the point's neighbors as a set.
+     * @return std::set<int>
+     */
+    std::set<int> getNeighborIndicesSet() const
+    {
+        std::set<int> neighbor_indices;
+        for (F_Edge edge : edges)
+            neighbor_indices.insert(edge.to_index);
+        return neighbor_indices;
+    }
+};
+
+/**
+ * @brief Definition of different filter types based on the query type.
+ *
+ */
+enum QueryType
+{
+    NO_FILTER = 0,                         // For `query_type == 0`, no filter is applied (only the vector is used).
+    CATEGORY_CONSTRAINT = 1,               // For `query_type == 1`, filter for C = v (categorical attribute).
+    TIMESTAMP_CONSTRAINT = 2,              // **IGNORE** For `query_type == 2`, filter for l ≤ T ≤ r (timestamp constraint).
+    CATEGORY_AND_TIMESTAMP_CONSTRAINTS = 3 // **IGNORE** For `query_type == 3`, filter for both C = v and l ≤ T ≤ r (combined constraints).
+};
+
+/**
+ * @brief
+ * It represents a point that is queried against the dataset.
+ */
+class F_Query
+{
+public:
+    /**
+     * @brief
+     * The index of the query.
+     */
+    int index;
+
+    /**
+     * @brief
+     * The dimensions of the query's vector.
+     */
+    int dimensions;
+
+    /**
+     * @brief
+     * The type of the query.
+     *
+     * There are four types of queries, i.e., the `query_type` takes values from `[0, 1, 2, 3]`.
+     *
+     * The 4 types of queries correspond to:
+     *
+     * - `0`: Vector-only query, i.e., the conventional approximate nearest neighbor (ANN) search query.
+     *
+     * - `1`: Vector query with categorical attribute constraint, i.e., ANN search for data points satisfying `C=v`.
+     *
+     * - `2`: Vector query with timestamp attribute constraint, i.e., ANN search for data points satisfying `l≤T≤r`.
+     *
+     * - `3`: Vector query with both categorical and timestamp attribute constraints, i.e. ANN search for data points satisfying `C=v` and `l≤T≤r`.
+     *
+     * The predicate for the categorical attribute is an equality predicate, i.e., `C=v`.
+     *
+     * And the predicate for the timestamp attribute is a range predicate, i.e., `l≤T≤r`.
+     */
+    float query_type;
+
+    /**
+     * @brief
+     * The specific query value `v` for the categorical attribute.
+     *
+     * If not queried, it takes `-1`.
+     */
+    float v;
+
+    /**
+     * @brief
+     * The specific query value `l` for the timestamp attribute.
+     * If not queried, it takes `-1`.
+     */
+    float l;
+
+    /**
+     * @brief
+     * The specific query value `r` for the timestamp attribute.
+     * If not queried, it takes `-1`.
+     */
+    float r;
+
+    /**
+     * @brief
+     * The vector data of the point.
+     */
+    std::vector<float> vec;
+
+    /**
+     * @brief
+     * The outgoing edges.
+     */
+    std::vector<F_Edge> edges;
+
+    /**
+     * @brief
+     * Construct a new query.
+     * @param idx
+     * The index of the query.
+     * @param vector_data
+     * The vector data of the query.
+     * @param _query_type
+     * The type of the query.
+     * @param _v
+     * The specific query value `v` for the categorical attribute.
+     * @param _l
+     * The specific query value `l` for the timestamp attribute.
+     * @param _r
+     * The specific query value `r` for the timestamp attribute.
+     */
+    F_Query(
+        int _index,
+        std::vector<float> &_vec,
+        float _query_type,
+        float _v,
+        float _l,
+        float _r)
+    {
+        index = _index;
+        dimensions = _vec.size();
+        vec = _vec;
+        query_type = _query_type;
+        v = _v;
+        l = _l;
+        r = _r;
     }
 };
 
 /**
  * @brief
- * It respresents a set of utilities required by the Filtered Vamana indexing algorithm.
+ * It represents the Vamana algorithm with filters.
  */
 class F_Vamana
 {
 private:
     /**
      * @brief
-     * Generates initial random outgoing edges for each point in the dataset.
-     * Each point will have exactly R outgoing edges to random other points (excluding itself).
-     * @param R
-     * The number of outgoing edges (neighbors) each point should have.
-     */
-    void generateGraphEdges(int R)
-    {
-        int size = dataset_size;
-
-        // Random number generation setup
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> distrib(0, dataset_size - 1);
-
-        // For each point in the dataset
-        for (int i = 0; i < dataset_size; ++i)
-        {
-            F_Point &p = dataset[i];
-            int num_of_edges = R;
-
-            std::unordered_set<int> neighbors;
-
-            // Keep adding random neighbors until we have R neighbors (excluding self)
-            while (neighbors.size() < num_of_edges)
-            {
-                int j = distrib(gen);
-
-                // Exclude the point itself
-                if (j != p.index)
-                {
-                    neighbors.insert(j);
-                }
-            }
-
-            // Add outgoing edges to the selected neighbors
-            for (int neighbor_idx : neighbors)
-            {
-                F_Point &neighbor = dataset[neighbor_idx];
-                p.addNeighbor(neighbor, euclideanDistance(p.vec, neighbor.vec));
-            }
-        }
-    }
-
-    /**
-     * @brief
-     * Get a visual representation of the `Point`'s neighbors.
-     * Useful for debugging.
-     * @param p_idx
-     * The index of the `Point`.
-     * @return std::string
-     */
-    std::string neighborsTable(int p_idx)
-    {
-        std::ostringstream oss;
-        oss << "[ ";
-
-        // Loop through each outgoing edge for the specified point
-        for (size_t i = 0; i < dataset[p_idx].outgoing_edges.size(); ++i)
-        {
-            const F_Edge &edge = dataset[p_idx].outgoing_edges[i];
-            oss << "(" << edge.to_index << ", " << edge.weight << ")";
-
-            // Add a comma separator if it's not the last element
-            if (i < dataset[p_idx].outgoing_edges.size() - 1)
-            {
-                oss << ", ";
-            }
-        }
-
-        oss << " ]";
-        return oss.str();
-    }
-
-    /**
-     * @brief
-     * Prints the vector data in a table format.
+     * Get a random sample of a vector of size `tau`.
      * @param vec
-     * The vector data.
-     * @return std::string
+     * The vector to take a sample from.
+     * @param tau
+     * The size of the sample.
+     * @return std::vector<int>
      */
-    std::string vectorTable(std::vector<int> vec)
+    std::vector<int> randomSample(std::vector<int> &vec, int tau)
     {
-        std::ostringstream oss;
-        oss << "[ ";
-        for (size_t i = 0; i < vec.size(); ++i)
+        std::vector<int> R_f;
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(vec.begin(), vec.end(), g);
+
+        for (int i = 0; i < tau; i++)
+            R_f.push_back(vec[i]);
+
+        return R_f;
+    }
+
+    /**
+     * @brief
+     * Select the point with the smallest load from the vector rf according to the map T
+     * @param load
+     * A map with the index of points and their load.
+     * @param vec
+     * A vector with the indexes of points.
+     * @return int
+     */
+    int selectLeastLoaded(std::map<int, int> &load, std::vector<int> &vec)
+    {
+        // If vec is empty, decide on a fallback (e.g., return -1)
+        if (vec.empty())
+            return -1;
+
+        // Initialize with the first element in vec
+        int selected_point = vec[0];
+        int min_load = INT_MAX;
+
+        // Try to find the load for the first element
+        auto it = load.find(selected_point);
+        if (it != load.end())
+            min_load = it->second;
+
+        // Iterate through the rest of the elements
+        for (size_t i = 1; i < vec.size(); ++i)
         {
-            oss << vec[i];
-            if (i < vec.size() - 1)
+            int point = vec[i];
+            auto load_it = load.find(point);
+            if (load_it != load.end() && load_it->second < min_load)
             {
-                oss << ", ";
+                min_load = load_it->second;
+                selected_point = point;
             }
         }
-        oss << " ]";
 
-        return oss.str();
+        return selected_point;
     }
 
 public:
     /**
      * @brief
-     * It contains all the `F_Point`s of the `dataset`.
+     * It contains all the points of the dataset.
      */
     std::vector<F_Point> dataset;
 
     /**
      * @brief
-     * The number of `Point` in the `dataset`.
-     */
-    int dataset_size;
-
-    /**
-     * @brief
-     * The index of the medoid `Point` of the `dataset`.
+     * The index of the medoid in the dataset.
      */
     int medoid_idx;
 
     /**
      * @brief
-     * Construct a new `Vamana` object.
+     * The medoid indices per filter.
+     */
+    std::map<int, int> medoid_indices;
+
+    /**
+     * @brief
+     * It maps the filters to the corresponding points.
+     */
+    std::map<int, std::vector<int>> P_f;
+
+    /**
+     * @brief
+     * The set of all filters.
+     */
+    std::set<int> F;
+
+    /**
+     * @brief
+     * The label-set for every x in P.
+     */
+    std::map<int, float> Fx;
+
+    /**
+     * @brief
+     * Construct a new `F_Vamana` object.
      * @param _dataset
      * The dataset.
      */
     F_Vamana(std::vector<F_Point> &_dataset)
     {
         dataset = _dataset;
-        dataset_size = _dataset.size();
+    }
+
+    /**
+     * @brief
+     * Initialize the set of all filters F and map the corresponding points.
+     */
+    void mapFilters()
+    {
+        for (auto &p : dataset)
+        {
+            P_f[p.C].push_back(p.index);
+            F.insert(p.C);
+            Fx[p.index] = p.C;
+        }
     }
 
     /**
      * @brief
      * Calculate the medoid of the dataset.
-     * The medoid of the dataset is similar in concept to mean or centroid, but the medoid is always restricted to be a member of the data set.
-     * This function calculates the total distance from each point to all other points and then select the point with the smallest total distance as the medoid.
      * @param dataset
      * The dataset that you want to calculate the medoid for.
-     * @return int
-     * The index to the Medoid.
      */
     void calculateMedoid()
     {
@@ -347,259 +482,469 @@ public:
 
     /**
      * @brief
-     * It prunes the list of candidate neighbors for a given `F_Point` based on a
-     * pruning condition that involves an `alpha` scaling factor.
-     * It ensures that the `Point` has at most R outgoing edges to its nearest neighbors.
-     * @param p_idx
-     * The node for which we are pruning the candidate neighbors.
-     * @param V
-     * The set of candidate nodes.
-     * @param alpha
-     * The distance threshold.
-     * @param R
-     * The maximum number of outgoing edges.
+     * IGNORE
+     *
+     * Find the medoids per filter.
+     *
+     * @param P
+     * The dataset P with associated filters for all the points.
+     * @param tau
+     * The threshold.
      */
-    void robustPrune(int p_idx, std::vector<int> &V, float a, int R)
+    void calculateFilterMedoids(int tau)
     {
-        // V ← (V ∪ Nout(p)) \ {p}
-        std::vector<F_Edge> &p_edges = dataset[p_idx].outgoing_edges;
-        for (F_Edge &e : p_edges)
-            if ((std::find(V.begin(), V.end(), e.to_index)) == V.end())
-                V.push_back(e.to_index);
+        // Initialize M be an empty map, and T to an zero map; T is intended as a counter.
+        std::map<int, int> M;
+        std::map<int, int> T;
 
-        V.erase(std::remove(V.begin(), V.end(), p_idx), V.end());
-
-        // Nout(p) ← {}
-        p_edges.clear();
-
-        // while V != {} do
-        while (!V.empty())
+        // foreach f ∈ F, the set of all flters do
+        for (auto &f : F)
         {
-            // p∗ ← min(d(p, v), v ∈ V)
-            int pstar_idx = -1;
-            float pstar_dist = std::numeric_limits<float>::max();
-            for (int v_idx : V)
-            {
-                float distance = euclideanDistance(dataset[v_idx].vec, dataset[p_idx].vec);
-                if (distance < pstar_dist)
-                {
-                    pstar_dist = distance;
-                    pstar_idx = v_idx;
-                }
-            }
+            // Let P_f ← the ids of all points matching flter f
+            std::vector<int> P = P_f[f];
+            // Let R_f ← τ randomly sampled data point IDs from P_f.
+            std::vector<int> R = randomSample(P, tau);
+            // p∗ ← arg min(p ∈ R_f)T[p]
+            int p_star = selectLeastLoaded(T, R);
+            // M[f] ← p∗ and T[p*] ← T[p*] + 1
+            M[f] = p_star;
+            T[p_star] = T[p_star] + 1;
 
-            // Nout(p) ← Nout(p) ∪ {p∗} (check that p* not in Nout(p))
-            if (std::find_if(
-                    p_edges.begin(),
-                    p_edges.end(),
-                    [pstar_idx](const F_Edge &edge)
-                    { return edge.to_index == pstar_idx; }) == p_edges.end())
-                p_edges.push_back(F_Edge(pstar_idx, pstar_dist));
-
-            // if |Nout(p)| = R then break
-            if (p_edges.size() == R)
-                break;
-
-            // for v ∈ V do.
-            std::vector<int> to_remove;
-            for (int v_idx : V)
-            {
-                float pstar_to_v = euclideanDistance(dataset[pstar_idx].vec, dataset[v_idx].vec);
-                float p_to_v = euclideanDistance(dataset[p_idx].vec, dataset[v_idx].vec);
-
-                // if α · d(p∗, v) ≤ d(p, v) then remove v from V
-                if (a * pstar_to_v <= p_to_v)
-                    to_remove.push_back(v_idx);
-            }
-
-            // remove v from V
-            for (int remove_idx : to_remove)
-                V.erase(std::remove(V.begin(), V.end(), remove_idx), V.end());
+            // spdlog::info("+-------------------------------------+");
+            // spdlog::info("f  ← {}", f);
+            // spdlog::info("P  ← {}", toString(P));
+            // spdlog::info("R  ← {}", toString(R));
+            // spdlog::info("p* ← {}", p_star);
         }
+
+        medoid_indices = M;
     }
 
     /**
      * @brief
      * Greedy search algorithm.
-     * @param source_idx
-     * Index of the source node.
-     * @param query_idx
-     * Index of the query node.
+     * @param S
+     * ~The set of the initial nodes.~ Only 1 filter so we have only 1 starting node.
+     * @param x_q
+     * The query point.
      * @param k
-     * Number of nearest neighbors to find.
-     * @param L_size
-     * Maximum size of the candidate list L.
-     * @return std::pair<std::vector<int>, std::vector<int>>
+     * `k` approximate nearest neighbors.
+     * @param L_
+     * Search list size.
+     * @param F_q
+     * The query filter(s).
+     * @return std::pair<std::vector<Edge>, std::vector<int>>
      * A pair of vectors: the list of the `L_size` nearest neighbors and the list of visited nodes.
      */
-    std::pair<std::vector<int>, std::vector<int>> greedySearch(int source_idx, int query_idx, int k, int L_size)
+    std::pair<std::set<int>, std::set<int>> filteredGreedySearch(int S, F_Point &x_q, int k, int L_) // std::vector<int> F_q)
     {
-        std::vector<int> L;         // Candidate points
-        std::vector<int> V;         // Visited points
-        std::vector<int> L_minus_V; // L \ V
+        // Initialize sets L ← ∅ and V ← ∅
+        std::set<int> L;
+        std::set<int> V;
 
-        // L ← {s}
-        L.push_back(source_idx);
+        // +-------------------------------------+
+        // **IMPORTANT**
+        // We take into account only 1 filter!
+        // +-------------------------------------+
+        // for s ∈ S do
+        // if F_s ∩ F_x ≠ ∅ then
+        //     L ← L ∪ {s}
+        // for (int s : S)
+        // {
+        //     // if F_s ∩ F_x ≠ ∅ then
+        //     bool passFilter = true;
+        //     for (int f : F_q)
+        //     {
+        //         if (dataset[s].C != f)
+        //             passFilter = false;
+        //     }
 
-        // While L\V != {}
+        //     if (passFilter)
+        //         L.insert(s);
+        // }
+
+        if (dataset[S].C == x_q.C)
+            L.insert(S);
+
+        //  while L \ V ≠ ∅ do
         while (true)
         {
-            // L\V
-            L_minus_V.clear();
-            for (int l_idx : L)
-                if (l_idx != query_idx && std::find(V.begin(), V.end(), l_idx) == V.end())
-                    L_minus_V.push_back(l_idx);
-
-            // L\V ← {}, break
+            std::set<int> L_minus_V = getSetDifference(L, V);
             if (L_minus_V.empty())
                 break;
 
-            // p* ← min(||xp −xq||, p ∈ L\V)
-            int pstar_idx = -1;
+            // Let p* ← arg min(p ∈ L\V) ||x_p − x_q||
+            int p_star = -1;
             float min_dist = std::numeric_limits<float>::max();
-            for (int u_idx : L_minus_V)
+            for (auto p_idx : L_minus_V)
             {
-                float d = euclideanDistance(dataset[u_idx].vec, dataset[query_idx].vec);
+                float d = euclideanDistance(dataset[p_idx].vec, x_q.vec);
                 if (d < min_dist)
                 {
                     min_dist = d;
-                    pstar_idx = u_idx;
+                    p_star = p_idx;
                 }
             }
 
-            // update L ← L ∪ Nout(p∗)
-            for (F_Edge &edge : dataset[pstar_idx].outgoing_edges)
-                if (edge.to_index != query_idx && std::find(L.begin(), L.end(), edge.to_index) == L.end())
-                    L.push_back(edge.to_index);
+            // V ← V ∪ {p*}
+            V.insert(p_star);
 
-            // update V ← V ∪ {p∗}
-            if (std::find(V.begin(), V.end(), pstar_idx) == V.end())
-                V.push_back(pstar_idx);
-
-            // if |L| > L then update L to retain closest L points to q
-            if (L.size() > L_size)
+            // Let N'out(p*) ← {p' ∈ Nout(p*) : F_p' ∩ F_q ≠ ∅, p' ∉ V}
+            std::vector<int> Nout = dataset[p_star].getNeighborIndices();
+            std::vector<int> Nout_tune;
+            for (int p_tune : Nout)
             {
-                // Sort L based on distance to the query node
-                std::sort(
-                    L.begin(),
-                    L.end(),
-                    [this, query_idx](int a_idx, int b_idx)
-                    {
-                        return euclideanDistance(dataset[a_idx].vec, dataset[query_idx].vec) < euclideanDistance(dataset[b_idx].vec, dataset[query_idx].vec);
-                    });
+                bool passFilter = true;
+                // +-------------------------------------+
+                // **IMPORTANT**
+                // We take into account only 1 filter!
+                // +-------------------------------------+
+                // for (int f : F_q)
+                //     if (dataset[p_tune].C != f)
+                passFilter = false;
 
-                // Resize L to L_size
-                L.resize(L_size);
+                if (dataset[p_tune].C == x_q.C && V.find(p_tune) == V.end())
+                    Nout_tune.push_back(p_tune);
+            }
+
+            // L ← L ∪ N'out(p*)
+            for (int p_new : Nout_tune)
+                L.insert(p_new);
+
+            // if |L| > L_ then
+            if ((int)L.size() > L_)
+            {
+                // Update L with the closest L nodes to x_q
+                std::vector<int> L_vec(L.begin(), L.end());
+                std::vector<std::pair<float, int>> dist_nodes;
+                dist_nodes.reserve(L_vec.size());
+
+                for (int node_idx : L_vec)
+                {
+                    float d = euclideanDistance(dataset[node_idx].vec, x_q.vec);
+                    dist_nodes.emplace_back(d, node_idx);
+                }
+
+                std::sort(dist_nodes.begin(), dist_nodes.end(), [](auto &a, auto &b)
+                          { return a.first < b.first; });
+
+                dist_nodes.resize(L_);
+
+                L.clear();
+
+                for (auto &dn : dist_nodes)
+                    L.insert(dn.second);
             }
         }
 
-        // return [closest k points from L; V]
-        if (L.size() > k)
-            L.resize(k);
-
-        return std::make_pair(L, V);
+        // return [kNNs from L; V]
+        return {L, V};
     }
 
     /**
      * @brief
-     * Get the k nearest neighbors using the Greedy Search algorithm.
-     * @param source_idx
-     * Index of the source node.
-     * @param query_point
-     * The query `Point`.
+     * Greedy search algorithm.
+     * @param S
+     * ~The set of the initial nodes.~ Only 1 filter so we have only 1 starting node.
+     * @param x_q
+     * The query point.
      * @param k
-     * Number of nearest neighbors to find.
-     * @param L_size
-     * Maximum size of the candidate list L.
-     * @return A pair of vectors: the list of found nodes and the list of visited nodes.
+     * `k` approximate nearest neighbors.
+     * @param L_
+     * Search list size.
+     * @param F_q
+     * The query filter(s).
+     * @return std::pair<std::vector<Edge>, std::vector<int>>
+     * A pair of vectors: the list of the `L_size` nearest neighbors and the list of visited nodes.
      */
-    std::vector<int> greedySearchNearestNeighbors(int source_idx, F_Point &query_point, int k, int L_size)
+    std::pair<std::set<int>, std::set<int>> filteredGreedySearch(int S, F_Query &x_q, int k, int L_) // std::vector<int> F_q)
     {
-        std::vector<int> L;
-        std::vector<int> V;
-        std::vector<int> L_minus_V; // L \ V
+        // Initialize sets L ← ∅ and V ← ∅
+        std::set<int> L;
+        std::set<int> V;
 
-        // L ← {s}
-        L.push_back(source_idx);
+        // +-------------------------------------+
+        // **IMPORTANT**
+        // We take into account only 1 filter!
+        // +-------------------------------------+
+        // for s ∈ S do
+        // if F_s ∩ F_x ≠ ∅ then
+        //     L ← L ∪ {s}
+        // for (int s : S)
+        // {
+        //     // if F_s ∩ F_x ≠ ∅ then
+        //     bool passFilter = true;
+        //     for (int f : F_q)
+        //     {
+        //         if (dataset[s].C != f)
+        //             passFilter = false;
+        //     }
 
-        // While L\V != {}
+        //     if (passFilter)
+        //         L.insert(s);
+        // }
+
+        if (dataset[S].C == x_q.v)
+            L.insert(S);
+
+        //  while L \ V ≠ ∅ do
         while (true)
         {
-            // L\V
-            L_minus_V.clear();
-            for (int l_idx : L)
-                if (std::find(V.begin(), V.end(), l_idx) == V.end())
-                    L_minus_V.push_back(l_idx);
-
-            // L\V ← {}, break
+            std::set<int> L_minus_V = getSetDifference(L, V);
             if (L_minus_V.empty())
                 break;
 
-            // p* ← min(||xp −xq||, p ∈ L\V)
-            int pstar_idx = -1;
+            // Let p* ← arg min(p ∈ L\V) ||x_p − x_q||
+            int p_star = -1;
             float min_dist = std::numeric_limits<float>::max();
-            for (int u_idx : L_minus_V)
+            for (auto p_idx : L_minus_V)
             {
-                float d = euclideanDistance(dataset[u_idx].vec, query_point.vec);
+                float d = euclideanDistance(dataset[p_idx].vec, x_q.vec);
                 if (d < min_dist)
                 {
                     min_dist = d;
-                    pstar_idx = u_idx;
+                    p_star = p_idx;
                 }
             }
 
-            // update L ← L ∪ Nout(p∗)
-            for (F_Edge &edge : dataset[pstar_idx].outgoing_edges)
-                if (std::find(L.begin(), L.end(), edge.to_index) == L.end())
-                    L.push_back(edge.to_index);
+            // V ← V ∪ {p*}
+            V.insert(p_star);
 
-            // update V ← V ∪ {p∗}
-            if (std::find(V.begin(), V.end(), pstar_idx) == V.end())
-                V.push_back(pstar_idx);
-
-            // if |L| > L then update L to retain closest L points to q
-            if (L.size() > L_size)
+            // Let N'out(p*) ← {p' ∈ Nout(p*) : F_p' ∩ F_q ≠ ∅, p' ∉ V}
+            std::vector<int> Nout = dataset[p_star].getNeighborIndices();
+            std::vector<int> Nout_tune;
+            for (int p_tune : Nout)
             {
-                // Sort L based on distance to the query node
-                std::sort(
-                    L.begin(),
-                    L.end(),
-                    [this, query_point](int a_idx, int b_idx)
-                    {
-                        return euclideanDistance(dataset[a_idx].vec, query_point.vec) < euclideanDistance(dataset[b_idx].vec, query_point.vec);
-                    });
+                bool passFilter = true;
+                // +-------------------------------------+
+                // **IMPORTANT**
+                // We take into account only 1 filter!
+                // +-------------------------------------+
+                // for (int f : F_q)
+                //     if (dataset[p_tune].C != f)
+                passFilter = false;
 
-                // Resize L to L_size
-                L.resize(L_size);
+                if (dataset[p_tune].C == x_q.v && V.find(p_tune) == V.end())
+                    Nout_tune.push_back(p_tune);
+            }
+
+            // L ← L ∪ N'out(p*)
+            for (int p_new : Nout_tune)
+                L.insert(p_new);
+
+            // if |L| > L_ then
+            if ((int)L.size() > L_)
+            {
+                // Update L with the closest L nodes to x_q
+                std::vector<int> L_vec(L.begin(), L.end());
+                std::vector<std::pair<float, int>> dist_nodes;
+                dist_nodes.reserve(L_vec.size());
+
+                for (int node_idx : L_vec)
+                {
+                    float d = euclideanDistance(dataset[node_idx].vec, x_q.vec);
+                    dist_nodes.emplace_back(d, node_idx);
+                }
+
+                std::sort(dist_nodes.begin(), dist_nodes.end(), [](auto &a, auto &b)
+                          { return a.first < b.first; });
+
+                dist_nodes.resize(L_);
+
+                L.clear();
+
+                for (auto &dn : dist_nodes)
+                    L.insert(dn.second);
             }
         }
 
-        // return [closest k points from L; V]
-        if (L.size() > k)
-            L.resize(k);
-
-        return L;
+        // return [kNNs from L; V]
+        return {L, V};
     }
 
     /**
      * @brief
-     * Brute force calculation of the k nearest neighbors of a given query point.
-     * @param query_point
-     * The query `F_Point` (can be a new point or one from the dataset).
-     * @param k
-     * The number of nearest neighbors to find.
-     * @return
-     * A vector of indices of the k nearest neighbors in the dataset.
+     * Filtered Robust Prune Algorithm.
+     * @param p
+     * The point p ∈ P
+     * @param V
+     * The candinate set.
+     * @param a
+     * The distance threshold a ≥ 1
+     * @param R
+     * Max outdegree bound.
      */
-    std::vector<int> bruteForceNearestNeighbors(const F_Point &query_point, int k)
+    void filteredRobustPrune(F_Point &p, std::set<int> &V, float a, int R)
+    {
+        // V ← V ∪ Nout(p) \ {p}
+        std::set<int> Nout = p.getNeighborIndicesSet();
+        for (int n : Nout)
+            V.insert(n);
+        V.erase(p.index);
+
+        // Nout(p) ← ∅
+        p.edges.clear();
+
+        // while V ≠ ∅ do
+        while (!V.empty())
+        {
+            // p* ← arg min(p′ ∈ V) || d(p, p') ||
+            int p_star = -1;
+            float min_dist = std::numeric_limits<float>::max();
+            for (int p_idx : V)
+            {
+                float d = euclideanDistance(dataset[p.index].vec, dataset[p_idx].vec);
+                if (d < min_dist)
+                {
+                    min_dist = d;
+                    p_star = p_idx;
+                }
+            }
+
+            // Nout(p) ← Nout(p) ∪ {p*}
+            p.addNeighborPoint(dataset[p_star], min_dist);
+
+            // if |Nout(p)| = R then
+            if (p.edges.size() == R)
+                break;
+
+            // for p' ∈ V do
+            std::set<int> V_copy = V;
+            std::vector<int> to_remove;
+            for (int p_tone : V_copy)
+            {
+                // +-------------------------------------+
+                // **IMPORTANT**
+                // We take into account only 1 filter!
+                // +-------------------------------------+
+                // if F_p′ ∩ F_p ⊄ F_p* then
+                //     continue
+                if (dataset[p_tone].C != p.C && dataset[p_star].C != dataset[p_tone].C)
+                    continue;
+
+                // if a · d(p∗, p′) ≤ d(p, p′) then remove p′ from V
+                float pstar_to_ptone = euclideanDistance(dataset[p_star].vec, dataset[p_tone].vec);
+                float p_to_ptone = euclideanDistance(p.vec, dataset[p_tone].vec);
+
+                if (a * pstar_to_ptone <= p_to_ptone)
+                    to_remove.push_back(p_tone);
+            }
+
+            // remove v from V
+            for (int remove_idx : to_remove)
+                V.erase(remove_idx);
+        }
+    }
+
+    /**
+     * @brief
+     * Filtered Vamana Indexing Algorithm.
+     * @param P
+     * @param a
+     * @param L
+     * @param R
+     */
+    void filteredVamanaIndexing(float a, int L, int R)
+    {
+        std::vector<F_Point> P = dataset;
+        int n = dataset.size();
+
+        // Initialize G to an empty graph
+
+        // Let s denote the medoid of P
+        F_Point s = dataset[medoid_idx];
+
+        // +-------------------------------------+
+        // **IMPORTANT**
+        // We take into account only 1 filter!
+        // +-------------------------------------+
+        // Let st(f) denote the start node for flter label f for every f ∈ F
+        // std::map<int, int> st = medoid_indices;
+
+        // Let σ be a random permutation of [n]
+        std::vector<int> sigma = generateSigma(n);
+
+        // foreach i ∈ [n] do
+        progressbar bar(n);
+        for (int i = 0; i < n; i++)
+        {
+            bar.update();
+
+            // +-------------------------------------+
+            // **IMPORTANT**
+            // We take into account only 1 filter!
+            // +-------------------------------------+
+            // // Let S_F_x_σ[i] = { st(f) : f in F_X_σ[i] }
+            F_Point &x = dataset[sigma[i]];
+            // int F_x_sigma_i = Fx[x.index];
+            // std::vector<int> S_F_x_sigma_i;
+            // S_F_x_sigma_i.push_back(st[F_x_sigma_i]);
+            // std::vector<int> query_filters;
+            // query_filters.push_back(F_x_sigma_i);
+            // // Let [∅; V_F_x_σ(i)] ← FilteredGreedySearch(S_F_x_σ(i), x_σ(i), 0, L, F_x_σ(i))
+            // auto p = filteredGreedySearch(S_F_x_sigma_i, x, 0, L, query_filters);
+            // std::set<int> ignored_L = p.first;
+            // std::set<int> V_F_x_sigma_i = p.second;
+            // V ← V ∪ V_F_x_σ(i)
+            // Note: the V is missing in the pseudocode.
+            // V.insert(V_F_x_sigma_i.begin(), V_F_x_sigma_i.end());
+
+            auto p = filteredGreedySearch(medoid_idx, dataset[sigma[i]], 0, L);
+
+            std::set<int> V = p.second;
+
+            // Run FilteredRobustPrune(x_σ(i), V_F_x_σ(i), a, R) to update neighbors of σ(i)
+            // filteredRobustPrune(x, V_F_x_sigma_i, a, R);
+
+            filteredRobustPrune(dataset[sigma[i]], V, a, R);
+
+            // foreach j ∈ Nout(σ(i)) do
+            std::vector<int> Nout_x = x.getNeighborIndices();
+            for (int j : Nout_x)
+            {
+                // Update Nout(j) ← Nout(j) ∪ {σ(i)}
+                dataset[j].addNeighborPoint(x, euclideanDistance(dataset[j].vec, x.vec));
+
+                // if |Nout(j)| > R then
+                if (dataset[j].edges.size() > R)
+                {
+                    std::set<int> Nout_j = dataset[j].getNeighborIndicesSet();
+                    // Run FilteredRobustPrune(j, Nout(j), a, R) to update out-neighbors of j
+                    filteredRobustPrune(dataset[j], Nout_j, a, R);
+                }
+            }
+
+            // Run Filtered Greedy Search with S = S_F_x_sigma[i], query = x_sigm[i],
+            // and query filters = F_x_sigma[i]
+            // Let [∅; V_F_x_σ(i)] ← FilteredGreedySearch(S_F_x_σ(i), x_σ(i), 0, L, F_x_σ(i))
+            // V ← V ∪ V_F_x_σ(i)
+            // Run FilteredRobustPrune(x_σ(i), V_F_x_σ(i), a, R) to update neighbors of σ(i)
+            // foreach j ∈ Nout(σ(i)) do
+            //     Update Nout(j) ← Nout(j) ∪ {σ(i)}
+            //     if |Nout(j)| > R then
+            //         Run FilteredRobustPrune(j, Nout(j), a, R) to update out-neighbors of j
+        }
+    }
+
+    /**
+     * @brief
+     * Brute force nearest neighbors search.
+     * @param q
+     * The query vector.
+     * @param k
+     * `k` approximate nearest neighbors.
+     * @return std::vector<int>
+     * The indices of the `k` nearest neighbors.
+     */
+    std::vector<int> bruteForceNearestNeighbors(F_Query &q, int k)
     {
         // Vector to store pairs of distance and index
         std::vector<std::pair<float, int>> distances;
 
         // Compute distance from the query point to every point in the dataset
-        for (const F_Point &p : dataset)
+        for (F_Point &p : dataset)
         {
-            float dist = euclideanDistance(query_point.vec, p.vec);
+            float dist = euclideanDistance(q.vec, p.vec);
             distances.push_back(std::make_pair(dist, p.index));
         }
 
@@ -607,7 +952,7 @@ public:
         std::sort(
             distances.begin(),
             distances.end(),
-            [](const std::pair<float, int> &a, const std::pair<float, int> &b)
+            [](std::pair<float, int> &a, std::pair<float, int> &b)
             { return a.first < b.first; });
 
         // Extract the indices of the k nearest neighbors
@@ -619,216 +964,55 @@ public:
 
         return neighbors;
     }
-
-    /**
-     * @brief
-     * Creates an in-memory index on the supplied nodes to efficiently answer approximate nearest neighbor queries.
-     * The N nodes must already be initialized as a random graph of outgoing edges with maximum of log(N) outgoing edges per node.
-     * @param a
-     * Scaling factor to prune outgoing eges of a node (alpha).
-     * @param L
-     * Maximum list of search candidates to use in graph traversal.
-     * @param R
-     * Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
-     */
-    void index(float a, int L, int R)
-    {
-        spdlog::debug("+---------------------------+");
-        spdlog::debug("| Vamana Indexing Algorithm |");
-        spdlog::debug("+---------------------------+");
-        spdlog::debug("# a ← {} & L_size ← {} & R ← {} & s ← {}", a, L, R, medoid_idx);
-
-        // initialize G to a random R-regular directed graph
-        generateGraphEdges(R);
-
-        // let s denote the medoid of dataset P
-        int s = medoid_idx;
-
-        // let sigma denote a random permutation of 1..n
-        std::vector<int> sigma = generateSigma(dataset_size);
-
-        // for 1 ≤ i ≤ n do
-        for (int i = 0; i < dataset_size; ++i)
-        {
-
-            // let [L; V] ← GreedySearch(s, σ(i), 1, L_size)
-            std::pair<std::vector<int>, std::vector<int>> r = greedySearch(s, sigma[i], 1, L);
-
-            // run RobustPrune(σ(i), V, a, R) to update out-neighbors of σ(i)
-            robustPrune(sigma[i], r.second, a, R);
-
-            spdlog::debug("=====================================================================");
-            spdlog::debug("+ GreedySearch(s, σ({}), 1, {})", i, L);
-            spdlog::debug("# V ← {}", vectorTable(r.second));
-            spdlog::debug("+ RobustPrune(σ({}), V, a, R)", i);
-            spdlog::debug("# Neighbors(σ({}))) ← {}", i, neighborsTable(sigma[i]));
-
-            // for all points j in Neighbors(σ(i))
-            for (F_Edge &e : dataset[sigma[i]].outgoing_edges)
-            {
-                int j_idx = e.to_index;
-
-                // W ← Nout(j) ∪ {σ(i)}
-                std::vector<int> W(dataset[j_idx].outgoing_edges.size());
-
-                std::transform(
-                    dataset[j_idx].outgoing_edges.begin(),
-                    dataset[j_idx].outgoing_edges.end(),
-                    W.begin(),
-                    [](const F_Edge &edge)
-                    { return edge.to_index; });
-
-                W.push_back(sigma[i]);
-
-                spdlog::debug("---------------------------------------------------------------------");
-                spdlog::debug("# j ← {}", j_idx);
-                spdlog::debug("# Neighbors(j) = {}", neighborsTable(j_idx));
-
-                // |W| > R => run RobustPrune(j, W, a, R) to update out-neighbors of j
-                if (W.size() > R)
-                {
-                    robustPrune(j_idx, W, a, R);
-
-                    spdlog::debug("+ |W| > R => RobustPrune(j, W, {}, {})", j_idx, a, R);
-                    spdlog::debug("# Neighbors(j) = {}", neighborsTable(j_idx));
-                }
-                // |W| < R | => update Neighbors(j) ← Neighbors(j) U {sigma(i)}
-                else
-                {
-                    dataset[j_idx].outgoing_edges.push_back(F_Edge(sigma[i], euclideanDistance(dataset[sigma[i]].vec, dataset[j_idx].vec)));
-
-                    spdlog::debug("+ |W| < R => Neighbors(j) ← Neighbors(j) U {}", R, j_idx, j_idx, sigma[i]);
-                    spdlog::debug("# Neighbors(j) = {}", neighborsTable(j_idx));
-                }
-
-                spdlog::debug("---------------------------------------------------------------------");
-            }
-        }
-
-        spdlog::debug("+---------------------------------------------------------------------------------+");
-    }
 };
 
 /**
  * @brief
- * Checks compatibility between a query and a dataset point.
- * @param P
- * The struct of the dataset point.
- * @param Q
- * The struct of the query point.
- * @return A true or false value is returned: 1 if the points are compatible or 0 if they are not compatible.
+ * Parse the sigmod-contest dummy data.
+ * @param filepath
+ * The path to the file.
+ * @param no_dimensions
+ * The dimensions of each point's vector.
+ * @return std::vector<F_Point>
+ * The dataset of points.
  */
-int checkFilters(F_Point &p, F_Point &q)
+std::vector<F_Point> parseDummyData(std::string &filepath, int no_dimensions)
 {
-    if (q.query_type == 0)
-        return 1;
-    else if (q.query_type == 1 && p.category == q.category)
-        return 1;
-    else if (q.query_type == 2 && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp)
-        return 1;
-    else if (q.query_type == 3 && p.category == q.category && q.lower_timestamp <= p.upper_timestamp && p.upper_timestamp <= q.upper_timestamp)
-        return 1;
-    return 0;
-}
-
-/**
- * @brief Parse a `bin` file  dummy-queries.
- * @param file_path The path to the `bin` file.
- * @param no_dimensions The dimensions of each point
- * @return std::vector<Point>
- */
-std::vector<F_Point> parseDummyQueries(const std::string &file_path, const int no_dimensions)
-{
-    // Opening the file
     std::ifstream ifs;
-    ifs.open(file_path, std::ios::binary);
+    ifs.open(filepath, std::ios::binary);
     assert(ifs.is_open());
 
     // 1. The first four bytes(int) represent the number of points in the file.
-    uint32_t N; // num of points
+    uint32_t N;
     ifs.read((char *)&N, sizeof(uint32_t));
 
-    // vector that consists all points
     std::vector<F_Point> points;
-    // points.reserve(N); // reserve space for the points it is optional
-
-    // buffer for reading each point
     std::vector<float> buff(no_dimensions);
 
-    // 2. Read and parse each point
-    for (int idx = 0; idx < N; ++idx)
+    // 2. Read and parse each point.
+    for (int _idx = 0; _idx < N; ++_idx)
     {
-        // 3. Read point and store it in buff
-        if (!ifs.read(reinterpret_cast<char *>(buff.data()), no_dimensions * sizeof(float)))
-            break;
-
-        // 4. Parse metadata
-        int q_type = static_cast<int>(buff[0]);
-        int category = static_cast<int>(buff[1]);
-        float lower = buff[2];
-        float upper = buff[3];
-
-        // 5. Parse vector data (excluding the first 4 metadata values)
-        std::vector<float> row(buff.begin() + 4, buff.end());
-
-        // 6. Create a new F_Point object.
-        F_Point new_point = F_Point(idx, row, q_type, category, lower, upper);
-
-        // 7. Add it to the database.
-        points.push_back(new_point);
-    }
-    // 8. Close file and return the database
-    ifs.close();
-
-    return points;
-}
-
-/**
- * @brief Parse a `bin` file  dummy-data
- * @param bin_filepath The path to the `bin` file.
- * @param num_dimensions The dimensions of each point
- * @return std::vector<Point>
- */
-std::vector<F_Point> parseDummyData(const std::string &file_path, const int no_dimensions)
-{
-    // Opening the file
-    std::ifstream ifs;
-    ifs.open(file_path, std::ios::binary);
-    assert(ifs.is_open());
-
-    // 1. The first four bytes(int) represent the number of points in the file.
-    uint32_t N; // num of points
-    ifs.read((char *)&N, sizeof(uint32_t));
-
-    // vector that consists all points
-    std::vector<F_Point> points;
-
-    // buffer for reading each point
-    std::vector<float> buff(no_dimensions);
-
-    // 2. Read and parse each point
-    for (int idx = 0; idx < N; ++idx)
-    {
-        // 3. Read point and store it in buff
+        // 3. Read point and store it in buff.
         if (!ifs.read(reinterpret_cast<char *>(buff.data()), no_dimensions * sizeof(float)))
         {
-            std::cerr << "Error reading point data at index " << idx << std::endl;
+            std::cerr << "Error reading point data at index " << _idx << std::endl;
             break;
         }
 
-        // 4. Parse metadata
-        int category = static_cast<int>(buff[0]);
-        float timestamp = static_cast<int>(buff[1]);
+        // 4. Parse metadata.
+        float _c = buff[0];
+        float _t = buff[1];
 
         // 5. Parse vector data (excluding the first 4 metadata values)
-        std::vector<float> row(buff.begin() + 2, buff.end());
+        std::vector<float> _vec(buff.begin() + 2, buff.end());
 
-        // 6. Create a new Point object placing the category in the category argument an timestamp in both bounds(lower , upper).
-        F_Point new_point = F_Point(idx, row, -1, category, timestamp, timestamp);
+        // 6. Create a new point placing the category in the category argument an timestamp in both bounds(lower , upper).
+        F_Point new_point = F_Point(_idx, _vec, _c, _t);
 
         // 7. Add it to the database.
         points.push_back(new_point);
     }
+
     // 8. Close file and return the database
     ifs.close();
 
@@ -837,42 +1021,60 @@ std::vector<F_Point> parseDummyData(const std::string &file_path, const int no_d
 
 /**
  * @brief
- * Calculate the euclidean distance between two vectors `a` and `b`.
- * @param a
- * The first `vector`.
- * @param b
- * The second `vector`.
- * @return float
+ * Parse the sigmod-contest dummy queries.
+ * @param filepath
+ * The path to the file.
+ * @param no_dimensions
+ * The dimensions of each query's vector.
+ * @return std::vector<F_Query>
+ * The dataset of queries.
  */
-float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b)
+std::vector<F_Query> parseDummyQueries(std::string &filepath, int no_dimensions)
 {
-    float sum = 0.0f;
+    std::ifstream ifs;
+    ifs.open(filepath, std::ios::binary);
+    assert(ifs.is_open());
 
-    for (size_t i = 0; i < a.size(); ++i)
-        sum += std::pow(a[i] - b[i], 2);
+    // 1. The first four bytes(int) represent the number of points in the file.
+    uint32_t N;
+    ifs.read((char *)&N, sizeof(uint32_t));
 
-    return std::sqrt(sum);
-}
+    std::vector<F_Query> queries;
+    std::vector<float> buff(no_dimensions);
 
-/**
- * @brief
- * Generating a vector that contains all numbers from 1..n shuffled.
- * @param n
- * The size of the vector.
- * @return
- * std::vector<int>
- */
-std::vector<int> generateSigma(int n)
-{
-    //
-    std::vector<int> sigma(n);
-    for (int i = 0; i < n; ++i)
-        sigma[i] = i;
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(sigma.begin(), sigma.end(), g);
+    // 2. Read and parse each point.
+    for (int _idx = 0; _idx < N; ++_idx)
+    {
+        // 3. Read point and store it in buff.
+        if (!ifs.read(reinterpret_cast<char *>(buff.data()), no_dimensions * sizeof(float)))
+            break;
 
-    return sigma;
+        // 4. Parse metadata.
+        QueryType _query_type = static_cast<QueryType>(buff[0]);
+        float _v = buff[1];
+        float _l = buff[2];
+        float _r = buff[3];
+
+        // 5. Parse vector data (excluding the first 4 metadata values)
+        std::vector<float> _vec(buff.begin() + 4, buff.end());
+
+        // 6. Create a new F_Point object.
+        F_Query new_query = F_Query(
+            _idx,
+            _vec,
+            _query_type,
+            _v,
+            _l,
+            _r);
+
+        // 7. Add it to the database.
+        queries.push_back(new_query);
+    }
+
+    // 8. Close file and return the database
+    ifs.close();
+
+    return queries;
 }
 
 #endif // VAMANA_FILTERED_H

@@ -22,6 +22,12 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
+/**********************/
+/* Project Components */
+/**********************/
+
+#include "misc.h"
+
 /***************/
 /* Definitions */
 /***************/
@@ -29,11 +35,9 @@
 class Edge;
 class Point;
 class Vamana;
-std::vector<Point> parseFvecsFile(const std::string &);
-std::vector<std::vector<int>> parseIvecsFile(const std::string &);
-int intersectionSize(const std::vector<int> &, const std::vector<int> &);
-std::vector<int> generateSigma(int);
-float euclideanDistance(const std::vector<float> &, const std::vector<float> &);
+
+std::vector<Point> parseFvecsFile(std::string &);
+std::vector<std::vector<int>> parseIvecsFile(std::string &);
 
 /*******************/
 /* Implementations */
@@ -105,7 +109,7 @@ public:
      * @param idx Unique identifier of the `Point` in the dataset.
      * @param vector_data The vector data of the `Point`.
      */
-    Point(int idx, const std::vector<float> &vector_data)
+    Point(int idx, std::vector<float> &vector_data)
     {
         index = idx;
         dimensions = vector_data.size();
@@ -124,7 +128,7 @@ public:
         {
             // Check if an edge to this neighbor already exists
             bool already_connected = false;
-            for (const Edge &edge : outgoing_edges)
+            for (Edge &edge : outgoing_edges)
             {
                 if (edge.to_index == neighbor.index)
                 {
@@ -207,7 +211,7 @@ private:
         // Loop through each outgoing edge for the specified point
         for (size_t i = 0; i < dataset[p_idx].outgoing_edges.size(); ++i)
         {
-            const Edge &edge = dataset[p_idx].outgoing_edges[i];
+            Edge &edge = dataset[p_idx].outgoing_edges[i];
             oss << "(" << edge.to_index << ", " << edge.weight << ")";
 
             // Add a comma separator if it's not the last element
@@ -218,30 +222,6 @@ private:
         }
 
         oss << " ]";
-        return oss.str();
-    }
-
-    /**
-     * @brief
-     * Prints the vector data in a table format.
-     * @param vec
-     * The vector data.
-     * @return std::string
-     */
-    std::string vectorTable(std::vector<int> vec)
-    {
-        std::ostringstream oss;
-        oss << "[ ";
-        for (size_t i = 0; i < vec.size(); ++i)
-        {
-            oss << vec[i];
-            if (i < vec.size() - 1)
-            {
-                oss << ", ";
-            }
-        }
-        oss << " ]";
-
         return oss.str();
     }
 
@@ -362,7 +342,7 @@ public:
             if (std::find_if(
                     p_edges.begin(),
                     p_edges.end(),
-                    [pstar_idx](const Edge &edge)
+                    [pstar_idx](Edge &edge)
                     { return edge.to_index == pstar_idx; }) == p_edges.end())
                 p_edges.push_back(Edge(pstar_idx, pstar_dist));
 
@@ -561,13 +541,13 @@ public:
      * @return
      * A vector of indices of the k nearest neighbors in the dataset.
      */
-    std::vector<int> bruteForceNearestNeighbors(const Point &query_point, int k)
+    std::vector<int> bruteForceNearestNeighbors(Point &query_point, int k)
     {
         // Vector to store pairs of distance and index
         std::vector<std::pair<float, int>> distances;
 
         // Compute distance from the query point to every point in the dataset
-        for (const Point &p : dataset)
+        for (Point &p : dataset)
         {
             float dist = euclideanDistance(query_point.vec, p.vec);
             distances.push_back(std::make_pair(dist, p.index));
@@ -577,7 +557,7 @@ public:
         std::sort(
             distances.begin(),
             distances.end(),
-            [](const std::pair<float, int> &a, const std::pair<float, int> &b)
+            [](std::pair<float, int> &a, std::pair<float, int> &b)
             { return a.first < b.first; });
 
         // Extract the indices of the k nearest neighbors
@@ -629,7 +609,7 @@ public:
 
             spdlog::debug("=====================================================================");
             spdlog::debug("+ GreedySearch(s, σ({}), 1, {})", i, L);
-            spdlog::debug("# V ← {}", vectorTable(r.second));
+            spdlog::debug("# V ← {}", toString(r.second));
             spdlog::debug("+ RobustPrune(σ({}), V, a, R)", i);
             spdlog::debug("# Neighbors(σ({}))) ← {}", i, neighborsTable(sigma[i]));
 
@@ -645,7 +625,7 @@ public:
                     dataset[j_idx].outgoing_edges.begin(),
                     dataset[j_idx].outgoing_edges.end(),
                     W.begin(),
-                    [](const Edge &edge)
+                    [](Edge &edge)
                     { return edge.to_index; });
 
                 W.push_back(sigma[i]);
@@ -686,7 +666,7 @@ public:
  * The path to the `.fvecs` file.
  * @return std::vector<Point>
  */
-std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath)
+std::vector<Point> parseFvecsFile(std::string &fvecs_filepath)
 {
     std::vector<Point> points;
     std::ifstream fvecs(fvecs_filepath, std::ios::binary);
@@ -729,7 +709,7 @@ std::vector<Point> parseFvecsFile(const std::string &fvecs_filepath)
  * The path to the `.ivecs` file.
  * @return std::vector<std::vector<int>>
  */
-std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
+std::vector<std::vector<int>> parseIvecsFile(std::string &ivecs_filepath)
 {
     std::vector<std::vector<int>> ground_truth;
 
@@ -755,77 +735,6 @@ std::vector<std::vector<int>> parseIvecsFile(const std::string &ivecs_filepath)
     ivecs.close();
 
     return ground_truth;
-}
-
-/**
- * @brief
- * Computes the size of the intersection of two integer vectors.
- *
- * This function takes two vectors of integers, converts them to unordered sets
- * to remove duplicates, and then calculates the number of elements that are
- * present in both sets.
- *
- * @param a The first vector of integers.
- * @param b The second vector of integers.
- * @return The number of elements that are present in both vectors.
- */
-int intersectionSize(const std::vector<int> &a, const std::vector<int> &b)
-{
-    // Convert vectors to unordered sets to remove duplicates
-    std::unordered_set<int> set_a(a.begin(), a.end());
-    std::unordered_set<int> set_b(b.begin(), b.end());
-
-    int count = 0;
-
-    // Iterate through the smaller set for efficiency
-    if (set_a.size() > set_b.size())
-        std::swap(set_a, set_b);
-
-    for (const int &e : set_a)
-        if (set_b.find(e) != set_b.end())
-            count++;
-
-    return count;
-}
-
-/**
- * @brief
- * Generating a vector that contains all numbers from 1..n shuffled.
- * @param n
- * The size of the vector.
- * @return
- * std::vector<int>
- */
-std::vector<int> generateSigma(int n)
-{
-    //
-    std::vector<int> sigma(n);
-    for (int i = 0; i < n; ++i)
-        sigma[i] = i;
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(sigma.begin(), sigma.end(), g);
-
-    return sigma;
-}
-
-/**
- * @brief
- * Calculate the euclidean distance between two vectors `a` and `b`.
- * @param a
- * The first `vector`.
- * @param b
- * The second `vector`.
- * @return float
- */
-float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b)
-{
-    float sum = 0.0f;
-
-    for (size_t i = 0; i < a.size(); ++i)
-        sum += std::pow(a[i] - b[i], 2);
-
-    return std::sqrt(sum);
 }
 
 #endif // VAMANA_H

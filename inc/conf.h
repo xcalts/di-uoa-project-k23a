@@ -1,9 +1,21 @@
 #ifndef CONF_H
 #define CONF_H
 
+/**********************/
+/* Standard Libraries */
+/**********************/
+
 #include <string>
 
+/**********************/
+/* External Libraries */
+/**********************/
+
 #include "rapidyaml.h"
+
+/**********************/
+/* Project Components */
+/**********************/
 
 #include "misc.h"
 
@@ -48,6 +60,7 @@ private:
         root["dummy_queries_filepath"] >> dummy_queries_filepath;
         root["data_dimensions"] >> data_dimensions;
         root["queries_dimensions"] >> queries_dimensions;
+        root["tau"] >> tau;
     }
 
 public:
@@ -116,6 +129,12 @@ public:
      * The dimension of the dummy queries of vectors.
      */
     int queries_dimensions;
+
+    /**
+     * @brief
+     * The number of nearest neighbors to find.
+     */
+    int tau;
 
     /**
      * @brief

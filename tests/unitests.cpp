@@ -1,8 +1,16 @@
+/**********************/
+/* Standard Libraries */
+/**********************/
+
 #include <fstream>
 #include <cstdio>
 #include <stdexcept>
 #include <iostream>
 #include <sys/stat.h>
+
+/**********************/
+/* External Libraries */
+/**********************/
 
 // https://github.com/biojppm/rapidyaml
 #define RYML_SINGLE_HDR_DEFINE_NOW
@@ -11,9 +19,14 @@
 // https://github.com/mity/acutest
 #include "acutest.h"
 
+/**********************/
+/* Project Components */
+/**********************/
+
 #include "conf.h"
 #include "misc.h"
 #include "vamana.h"
+#include "vamana-filtered.h"
 
 /**********/
 /* conf.h */
@@ -38,6 +51,7 @@ void test_configuration_initialization()
     config_file << "dummy_queries_filepath: \"dummy_queries_filepath.bin\"\n";
     config_file << "data_dimensions: 10\n";
     config_file << "queries_dimensions: 10\n";
+    config_file << "tau: 5\n";
     config_file.close();
 
     // Initialize the Configuration object
@@ -77,7 +91,6 @@ void test_configuration_nonexistent_file()
 void test_setup_logging()
 {
     setupLogging();
-    spdlog::info("This is a test log message.");
     TEST_CHECK(true); // If no exception is thrown, the test passes
 }
 
@@ -131,9 +144,9 @@ void test_validate_file_exists()
     TEST_EXCEPTION(validateFileExists("temp_test_file.txt"), std::runtime_error);
 }
 
-/**********/
+/************/
 /* vamana.h */
-/**********/
+/************/
 
 /**
  * @brief
@@ -179,15 +192,17 @@ void test_euclidean_distance()
     TEST_CHECK(std::floor(result) == std::floor(5.0));
 }
 
-// run tests
+/*********/
+/* TESTS */
+/*********/
+
 TEST_LIST = {
-    {"conf.h - Initialization", test_configuration_initialization},
-    {"conf.h - Non-Existent File", test_configuration_nonexistent_file},
-    {"misc.h - Setup Logging", test_setup_logging},
-    {"misc.h - Debug Function", test_debug_function},
-    {"misc.h - Read File Contents", test_read_file_contents},
-    {"misc.h - Validate File Exists", test_validate_file_exists},
-    {"vamana.h - Intersection Size", test_intersection_size},
-    {"vamana.h - Euclidean Distance", test_euclidean_distance},
-    {NULL, NULL} // {NULL, NULL} is marking the end of the list
-};
+    {"conf.h            | Initialization      ", test_configuration_initialization},
+    {"conf.h            | Non-Existent File   ", test_configuration_nonexistent_file},
+    {"misc.h            | Setup Logging       ", test_setup_logging},
+    {"misc.h            | Debug Function      ", test_debug_function},
+    {"misc.h            | Read File Contents  ", test_read_file_contents},
+    {"misc.h            | Validate File Exists", test_validate_file_exists},
+    {"misc.h            | Intersection Size   ", test_intersection_size},
+    {"misc.h            | Euclidean Distance  ", test_euclidean_distance},
+    {NULL, NULL}};

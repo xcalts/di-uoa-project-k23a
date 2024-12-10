@@ -23,3 +23,4 @@ dummy_data_filepath: "data/sigmod-contest-2024/dummy-data.bin"       # The filep
 dummy_queries_filepath: "data/sigmod-contest-2024/dummy-queries.bin" # The filepath to the Sigmod-Contest-2024 dummy queries of vectors.
 data_dimensions: 102                                                 # The dimension of the dummy data of vectors.
 queries_dimensions: 104                                              # The dimension of the dummy queries of vectors.
+tau: 5                                                               # The threshold
