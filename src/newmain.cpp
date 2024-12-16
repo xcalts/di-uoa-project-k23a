@@ -19,8 +19,6 @@
 /*
 make filtered_vamana 
 ./bin/filtered_vamana
-or
-g++ -std=c++14 -I./inc -I./libs newmain.cpp -o newmain
 */
 
 int main(int argc, char **argv) {
@@ -45,22 +43,21 @@ int main(int argc, char **argv) {
     
     // Initializing the `Vamana` object.
     FilteredVamana vamana = FilteredVamana(data_points , query_points );
-    Point &p = vamana.dataset[20] , &q = vamana.queryset[25];
-    int compatible = check_filters(p , q);
-
-    std::cout << "compatibillity of p and q is " << compatible << "\n";
-
-    p = vamana.dataset[21];
-    q = vamana.queryset[25];
-
-    compatible = check_filters(p , q);
-
-    std::cout << "compatibillity of p and q is " << compatible << "\n\n";
-
-    std::map <int ,  int> Mf = vamana.FindMedoid(data_points , 5);
-    for (auto medoid : Mf) {
-        std::cout << "filter category : "<< medoid.first << "\twith medoid: \t" << medoid.second <<std::endl;
+    
+    // _medoid_idx = 5234
+    //vamana.calculateMedoid();
+    vamana.medoid_idx = 5234;
+    vamana.StichedVamanaIndex(1, 10 , 10  , 20);
+    int stop=0;
+    for(Point & p  : vamana.dataset){
+        std::cout << "Point : " << p.index <<"with " << p.outgoing_edges.size() <<" edges \n\n";
+        stop++;
+        if(stop==100)
+            break;
     }
+    
+    //vamana.FilteredVamanaIndex(1, conf.max_candinates, conf.max_edges);
+
     
     return 0;
 }

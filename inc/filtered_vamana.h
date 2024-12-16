@@ -464,6 +464,73 @@ public:
         spdlog::debug("+---------------------------------------------------------------------------------+");
     }
     
+
+    /**
+     * @brief
+     * Creates a Graph out of a dataset with filters.
+     * Calls vamana index for each filter's dataset of compatible points. Running with smaller database can be more efficient.
+     * Connects all the smaller graphs to one.
+     * @param a
+     * Scaling factor to prune outgoing eges of a node (alpha).
+     * @param L_small
+     * Maximum list of search candidates to use in graph traversal, must be small to be more efficient.
+     * @param R_small
+     * Maximum number of outgoing edges of a node, must be small to be more efficient it is used in smaller graphs.
+     * @param R_stiched
+     * Maximum number of outgoing edges of a node, after the smaller graphs are stiched back together.
+     */
+    void StichedVamanaIndex(float a , int L_small , int R_small , int R_stiched){
+        // initialize G  = (V , E) to an empty graph
+
+        // Let fx ⊆ F be the label-set for every x ∈ P
+        std::map <int , int> fx = FindMedoid(dataset , 5);
+
+        // Let Pf ⊆ P be the set of points with label f ∈ F
+        std::vector<Point> pf ;
+
+        // foreach f ∈ F do 
+        for(auto f : fx){
+
+            // map with real id and new id
+            std::map<int , int> old_Id;
+
+            // empty pf vector
+            pf.clear();
+
+            // fill pf with points of filter f and add to each point a new id according to current position, we will restore it later
+            int new_id=0;
+            for(Point &p :dataset){
+                if(p.category == f.first){
+                    // create new point , add new point to pf , store old_Id of p to a map in order to restore
+                    Point new_p = Point(new_id , p.vec , p.query_type , p.category , p.lower_timestamp ,p.upper_timestamp );
+                    pf.push_back(new_p);
+                    old_Id[new_id] = p.index;
+                    new_id++;
+                }
+            }
+
+            // Let Gf ← Vamana(Pf, a, R_small ,L_small)
+            Vamana Pf = Vamana(pf);
+            Pf.calculateMedoid();
+            Pf.index(a, L_small , R_small);
+            std::vector<Point> Gf = Pf.dataset;
+            
+            // combine Gf with G
+            for(Point &p : Gf){
+                int old_id = old_Id.at(p.index);
+                dataset[old_id].outgoing_edges = p.outgoing_edges;
+            }
+
+        }
+
+        // foreach v ∈ V do   // this can be ignored because this points dont overlap through filters
+        //for(Point &p : dataset){
+            
+            // filteredRobustPrune(v , Nout(v) , a , R_stiched)
+        //    FilteredRobustPrune(p.index , p.outgoing_edges , a , R_stiched);
+        //}
+        
+    }
 };
 
 #endif // FILTERED_VAMANA_H
