@@ -28,12 +28,15 @@ void setupLogging();
 void debug(const std::string &, const std::string &);
 std::string readFileContents(const std::string &);
 void validateFileExists(const std::string &);
-std::string toString(std::vector<int>);
+std::string vectorToString(std::vector<int>);
+std::string setToString(std::set<int>);
 int intersectionSize(std::vector<int> &, std::vector<int> &);
+int intersectionBetweenSetsSize(std::set<int> &, std::set<int> &);
 float euclideanDistance(const std::vector<float> &, const std::vector<float> &);
 std::vector<int> generateSigma(int);
 std::set<int> getSetDifference(std::set<int> &, std::set<int> &);
 int getSetItemAtIndex(int, std::set<int> &);
+double calculateRecallEvaluation(const std::set<int> &, const std::set<int> &);
 
 /*******************/
 /* Implementations */
@@ -121,7 +124,7 @@ void validateFileExists(const std::string &filepath)
  * The vector data.
  * @return std::string
  */
-std::string toString(std::vector<int> vec)
+std::string vectorToString(std::vector<int> vec)
 {
     std::ostringstream oss;
     oss << "[ ";
@@ -134,6 +137,31 @@ std::string toString(std::vector<int> vec)
         }
     }
     oss << " ]";
+
+    return oss.str();
+}
+
+/**
+ * @brief
+ * Converts a set of integers to a string representation.
+ * @param s
+ * The set of integers.
+ * @return std::string
+ */
+std::string setToString(std::set<int> s)
+{
+    std::ostringstream oss;
+    oss << "{ ";
+    auto it = s.begin();
+    for (; it != s.end(); ++it)
+    {
+        oss << *it;
+        if (std::next(it) != s.end()) // Check if this is not the last element
+        {
+            oss << ", ";
+        }
+    }
+    oss << " }";
 
     return oss.str();
 }
@@ -164,6 +192,32 @@ int intersectionSize(std::vector<int> &a, std::vector<int> &b)
 
     for (int e : set_a)
         if (set_b.find(e) != set_b.end())
+            count++;
+
+    return count;
+}
+
+/**
+ * @brief
+ * Computes the size of the intersection of two integer sets.
+ *
+ * This function takes two sets of integers and calculates the number of elements
+ * that are present in both sets.
+ *
+ * @param a The first set of integers.
+ * @param b The second set of integers.
+ * @return The number of elements that are present in both sets.
+ */
+int intersectionBetweenSetsSize(std::set<int> &a, std::set<int> &b)
+{
+    int count = 0;
+
+    // Iterate through the smaller set for efficiency
+    if (a.size() > b.size())
+        std::swap(a, b);
+
+    for (int e : a)
+        if (b.find(e) != b.end())
             count++;
 
     return count;
@@ -249,6 +303,37 @@ int getSetItemAtIndex(int index, std::set<int> &set)
     std::advance(it, index);
 
     return *it;
+}
+
+/**
+ * @brief
+ * Calculates the recall between two sets of items. Recall is a measure of how many relevant items
+ * were retrieved out of the total relevant items.
+ * @param X
+ * The set of retrieved items.
+ * @param G
+ * The set of ground truth items (relevant items).
+ * @return
+ * A double representing the recall, ranging from 0.0 (no relevant items retrieved)
+ * to 1.0 (all relevant items retrieved).
+ */
+double calculateRecallEvaluation(const std::set<int> &X, const std::vector<int> &G)
+{
+    // Convert vector G to a set for intersection operation
+    std::set<int> set_G(G.begin(), G.end());
+
+    // Create a set to store the intersection of X and set_G, representing the correctly retrieved items.
+    std::set<int> result;
+    std::set_intersection(
+        X.begin(), X.end(),
+        set_G.begin(), set_G.end(),
+        std::inserter(result, result.begin()));
+
+    // Get the size of set_G
+    unsigned int k = set_G.size();
+
+    // Return the ratio of the size of the intersection to the size of set_G
+    return (double)result.size() / (double)k;
 }
 
 #endif // MISC_H

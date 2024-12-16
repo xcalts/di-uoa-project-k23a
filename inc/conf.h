@@ -58,6 +58,7 @@ private:
         root["max_edges"] >> max_edges;
         root["dummy_data_filepath"] >> dummy_data_filepath;
         root["dummy_queries_filepath"] >> dummy_queries_filepath;
+        root["groundtruth_nn_filepath"] >> groundtruth_nn_filepath;
         root["data_dimensions"] >> data_dimensions;
         root["queries_dimensions"] >> queries_dimensions;
         root["tau"] >> tau;
@@ -117,6 +118,12 @@ public:
      * The filepath to the Sigmod-Contest-2024 dataset of query vectors.
      */
     std::string dummy_queries_filepath;
+
+    /**
+     * @brief
+     * The filepath to the ground-truth 10 nearest neighbors of the dummy queries.
+     */
+    std::string groundtruth_nn_filepath;
 
     /**
      * @brief

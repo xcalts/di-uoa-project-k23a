@@ -27,6 +27,7 @@
 /* Project's Components */
 /************************/
 
+#include "brute.h"
 #include "conf.h"
 #include "misc.h"
 #include "vamana-filtered.h"
@@ -40,24 +41,31 @@ int main(int argc, char **argv)
 
         setupLogging();
 
-        spdlog::info("[+] Parsing and validating the command-line arguments.");
+        spdlog::info("[+] Parsing the command-line arguments.");
         argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
+
+        spdlog::info("[+] Checking for insufficient amount of arguments.");
         if (cmdl({"-h", "--help"}) || argc == 1)
         {
             std::cout << "Usage: ./vamana-filtered --conf ./conf.yaml" << std::endl;
-            return EXIT_FAILURE;
+            return EXIT_SUCCESS;
         }
+
+        spdlog::info("[+] Validating the command-line arguments.");
         cmdl({"-c", "--conf"}) >> conf_filepath;
         validateFileExists(conf_filepath);
 
-        spdlog::info("[+] Parsing and Validating the YAML configuration file.");
+        spdlog::info("[+] Parsing and validating the YAML configuration file.");
         Configuration conf = Configuration(conf_filepath);
         validateFileExists(conf.dummy_data_filepath);
         validateFileExists(conf.dummy_queries_filepath);
+        validateFileExists(conf.groundtruth_nn_filepath);
 
-        spdlog::info("[+] Parsing the dummy dataset/queries and printing the parsed parameters.");
+        spdlog::info("[+] Parsing the dummy dataset & queries.");
         std::vector<F_Point> dummyData = parseDummyData(conf.dummy_data_filepath, conf.data_dimensions);
         std::vector<F_Query> dummyQueries = parseDummyQueries(conf.dummy_queries_filepath, conf.queries_dimensions);
+
+        spdlog::info("[+] Printing all the parsed arguements.");
         spdlog::info("    [i] Dummy Data: {} nodes ({})", dummyData.size(), conf.dummy_data_filepath);
         spdlog::info("    [i] Queries: {} nodes ({})", dummyQueries.size(), conf.dummy_queries_filepath);
         spdlog::info("    [i] K Nearest Neighbors: {}", conf.kNN);
@@ -66,69 +74,51 @@ int main(int argc, char **argv)
         spdlog::info("    [i] Max Edges: {}", conf.max_edges);
         spdlog::info("    [i] τ: {}", conf.tau);
 
-        spdlog::info("[+] Initializing Vamana.");
+        spdlog::info("[+] Initializing the filtered vanana algorithm.");
         F_Vamana fvamana = F_Vamana(dummyData);
 
-        spdlog::info("[+] Calculating the GroundThruth kNNs.");
-        sw.reset();
-        std::map<int, std::vector<int>> ground_truth;
-        progressbar bar(dummyQueries.size());
-        for (F_Query &q : dummyQueries)
-        {
-            bar.update();
-            std::vector<int> kNNs = fvamana.bruteForceNearestNeighbors(q, conf.kNN);
-            ground_truth[q.index] = kNNs;
-        }
-        // // =Debug GroundThruth=
-        // for (auto &gt : ground_truth)
-        //     spdlog::info("{}: {}", gt.first, toString(gt.second));
+        spdlog::info("[+] Initializing the brute-force algorithm.");
+        Brute brute = Brute(dummyData);
 
-        spdlog::info("[+] Mapping the points to the corresponding filters.");
-        sw.reset();
-        fvamana.mapFilters();
-        spdlog::info("    [i] Time Elapsed: {} seconds.", sw);
+        // spdlog::info("[+] Calculating the GroundThruth kNNs.");
+        // brute.calculateDummyGroundTruth(dummyQueries, 100);
+        // brute.save("groundtruth-1000nn.txt");
+        // return EXIT_SUCCESS;
 
-        spdlog::info("[+] Calculating the unfiltered medoid of the dummy data.");
-        sw.reset();
-        // fvamana.calculateMedoid();
-        fvamana.medoid_idx = 5234;
-        spdlog::info("    [i] Medoid Index: {}.", fvamana.medoid_idx);
-        spdlog::info("    [i] Time Elapsed: {} seconds.", sw);
+        spdlog::info("[+] Loading the ground-truth nearest neighbors of the dummy queries.");
+        brute.load(conf.groundtruth_nn_filepath);
 
-        spdlog::info("[+] Finding the medoids per filter of the dummy data.");
-        sw.reset();
-        fvamana.calculateFilterMedoids(conf.tau);
-        spdlog::info("    [i] Time Elapsed: {} seconds.", sw);
+        spdlog::info("[+] Running the filtered vamana indexing.");
+        fvamana.filteredVamanaIndexing(conf.tau, conf.alpha, conf.max_candinates, conf.max_edges);
 
-        spdlog::info("[+] Running the Filtered Vamana Indexing.");
-        sw.reset();
-        fvamana.filteredVamanaIndexing(conf.alpha, conf.max_candinates, conf.max_edges);
-        spdlog::info("");
-        spdlog::info("    [i] Time Elapsed: {} seconds.", sw);
+        std::set<int> S;
+        for (auto f : fvamana.F)
+            S.insert(fvamana.st[f]);
 
         int total = 0;
-        std::vector<int> kNNs;
+        int query_count = 0;
+        float total_recall = 0.0;
         for (F_Query &q : dummyQueries)
         {
-            auto result = fvamana.filteredGreedySearch(fvamana.medoid_idx, q, conf.kNN, conf.max_candinates);
-            kNNs = std::vector<int>(result.first.begin(), result.first.end());
-            std::vector<int> gt_k = ground_truth[q.index];
+            if (q.query_type == 0 || q.query_type == 2 || q.query_type == 3)
+                continue;
 
-            total += intersectionSize(kNNs, gt_k);
+            std::set<float> F_q = {q.v};
+
+            auto r = fvamana.filteredGreedySearch(S, q.index, q.vec, conf.kNN, conf.max_candinates, F_q);
+
+            std::vector<int> nn = brute.getGtNNs(q.index, std::min(static_cast<size_t>(r.first.size()), static_cast<size_t>(conf.kNN)));
+
+            float e = calculateRecallEvaluation(r.first, nn);
+
+            spdlog::info("    - Recall(q[{}])@{}: {}%", q.index, conf.kNN, e * 100);
         }
-
-        spdlog::info("[+] Calculating the recall percentage..");
-        spdlog::info("    [i] correct: {}", total);
-        spdlog::info("    [i] query_points: {}", dummyQueries.size());
-        spdlog::info("    [i] k: {}", conf.kNN);
-        spdlog::info("    [i] *: {}", (conf.kNN * dummyQueries.size()) * 100);
-        float recall = static_cast<float>(total) / (conf.kNN * dummyQueries.size()) * 100;
-        spdlog::info("    [i] Recall@{}: {:.2f}%.", conf.kNN, recall);
 
         return EXIT_SUCCESS;
     }
     catch (const std::exception &e)
     {
         std::cerr << "[!] " << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
 }

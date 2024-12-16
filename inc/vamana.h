@@ -609,7 +609,7 @@ public:
 
             spdlog::debug("=====================================================================");
             spdlog::debug("+ GreedySearch(s, σ({}), 1, {})", i, L);
-            spdlog::debug("# V ← {}", toString(r.second));
+            spdlog::debug("# V ← {}", vectorToString(r.second));
             spdlog::debug("+ RobustPrune(σ({}), V, a, R)", i);
             spdlog::debug("# Neighbors(σ({}))) ← {}", i, neighborsTable(sigma[i]));
 
