@@ -8,7 +8,7 @@ TESTS_DIR = tests
 BIN_DIR = bin
 SRC_OBJ_DIR = obj
 TESTS_OBJ_DIR = test_obj
-TARGETS = clean vamana vamana-filtered unitests 
+TARGETS = clean vamana vamana-filtered vamana-stiched unitests 
 
 ##########
 # Vamana #
@@ -21,6 +21,12 @@ VAMANA_OBJ = $(SRC_OBJ_DIR)/vamana.o
 ###################
 FILTERED_VAMANA_SRC = $(SRC_DIR)/vamana-filtered.cpp
 FILTERED_VAMANA_OBJ = $(SRC_OBJ_DIR)/vamana-filtered.o
+
+###################
+# Stiched Vamana #
+###################
+STICHED_VAMANA_SRC = $(SRC_DIR)/vamana-stiched.cpp
+STICHED_VAMANA_OBJ = $(SRC_OBJ_DIR)/vamana-stiched.o
 
 ##############
 # Unit Tests #
@@ -41,6 +47,10 @@ $(FILTERED_VAMANA_OBJ): $(FILTERED_VAMANA_SRC)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+$(STICHED_VAMANA_OBJ): $(STICHED_VAMANA_SRC) 
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 $(UNIT_TESTS_OBJ): $(UNIT_TESTS_SRC)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -54,6 +64,11 @@ vamana-filtered: $(BIN_DIR)/vamana-filtered
 $(BIN_DIR)/vamana-filtered: $(FILTERED_VAMANA_OBJ)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(FILTERED_VAMANA_OBJ) -o $@
+
+vamana-stiched: $(BIN_DIR)/vamana-stiched
+$(BIN_DIR)/vamana-stiched: $(STICHED_VAMANA_OBJ)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(STICHED_VAMANA_OBJ) -o $@
 
 unitests: $(BIN_DIR)/unitests
 $(BIN_DIR)/unitests: $(UNIT_TESTS_OBJ) 
@@ -69,7 +84,7 @@ release: all
 clean:
 	rm -rf $(SRC_OBJ_DIR) $(TESTS_OBJ_DIR) $(BIN_DIR) logs.txt
 
-test: unitests vamana
+test: unitests vamana vamana-filtered vamana-stiched
 	$(BIN_DIR)/unitests
 
 .PHONY: all clean vamana vamana_filtered unitests debug release
