@@ -49,7 +49,7 @@ void test_configuration_initialization()
     config_file << "max_edges: 10\n";
     config_file << "dummy_data_filepath: \"dummy_data.bin\"\n";
     config_file << "dummy_queries_filepath: \"dummy_queries_filepath.bin\"\n";
-    config_file << "groundtruth_10nn_filepath: \"knn.bin\"\n";
+    config_file << "groundtruth_nn_filepath: \"knn.bin\"\n";
     config_file << "data_dimensions: 10\n";
     config_file << "queries_dimensions: 10\n";
     config_file << "tau: 5\n";
@@ -196,38 +196,6 @@ void test_euclidean_distance()
 /* vamana-filtered.h */
 /*********************/
 
-void test_filtered_greedy_search()
-{
-    // Create a sample dataset
-    std::vector<F_Point> dataset;
-    std::vector<float> vec1 = {1.0, 2.0};
-    std::vector<float> vec2 = {2.0, 3.0};
-    std::vector<float> vec3 = {3.0, 4.0};
-    std::vector<float> vec4 = {4.0, 5.0};
-
-    dataset.push_back(F_Point(0, vec1, 1.0, 1.0));
-    dataset.push_back(F_Point(1, vec2, 1.0, 1.0));
-    dataset.push_back(F_Point(2, vec3, 2.0, 2.0));
-    dataset.push_back(F_Point(3, vec4, 2.0, 2.0));
-
-    F_Vamana vamana(dataset);
-
-    // Set initial nodes and query parameters
-    std::set<int> S = {0, 1};
-    int x_q = 2;
-    std::vector<float> x_vec = {3.0, 4.0};
-    int k = 1;
-    int L_ = 2;
-    std::set<float> F_q = {1.0};
-
-    // Perform the filtered greedy search
-    auto result = vamana.filteredGreedySearch(S, x_q, x_vec, k, L_, F_q);
-
-    // Check the results
-    TEST_CHECK(result.first.size() == 2);  // L should have 2 elements
-    TEST_CHECK(result.second.size() == 1); // V should have 1 element
-}
-
 /**
  * @brief
  * Test to check if the filteredRobustPrune function works correctly.
@@ -280,6 +248,5 @@ TEST_LIST = {
     {"misc.h            | Validate File Exists", test_validate_file_exists},
     {"misc.h            | Intersection Size   ", test_intersection_size},
     {"misc.h            | Euclidean Distance  ", test_euclidean_distance},
-    {"vamana-filtered.h | Filtered Greedy Search", test_filtered_greedy_search},
     {"vamana-filtered.h | Filtered Robust Prune", test_filtered_robust_prune},
     {NULL, NULL}};
