@@ -27,10 +27,10 @@
 /* Project's Components */
 /************************/
 
-#include "brute.h"
+//#include "brute.h"
 #include "conf.h"
 #include "misc.h"
-#include "vamana-filtered.h"
+#include "vamana-stiched.h"
 
 int main(int argc, char **argv)
 {
@@ -78,42 +78,18 @@ int main(int argc, char **argv)
         F_Vamana fvamana = F_Vamana(dummyData);
 
         spdlog::info("[+] Initializing the brute-force algorithm.");
-        Brute brute = Brute(dummyData);
+        //Brute brute = Brute(dummyData);
 
         // spdlog::info("[+] Calculating the GroundThruth kNNs.");
         // brute.calculateDummyGroundTruth(dummyQueries, 100);
         // brute.save("groundtruth-1000nn.txt");
         // return EXIT_SUCCESS;
 
-        spdlog::info("[+] Loading the ground-truth nearest neighbors of the dummy queries.");
-        brute.load(conf.groundtruth_nn_filepath);
 
-        spdlog::info("[+] Running the filtered vamana indexing.");
-        fvamana.filteredVamanaIndexing(conf.tau, conf.alpha, conf.max_candinates, conf.max_edges);
+        spdlog::info("[+] Running the stiched vamana indexing.");
+        fvamana.StichedVamanaIndex(conf.alpha , conf.max_candinates , conf.max_edges, conf.max_edges, conf.tau);
 
-        std::set<int> S;
-        for (auto f : fvamana.F)
-            S.insert(fvamana.st[f]);
-
-        int total = 0;
-        int query_count = 0;
-        float total_recall = 0.0;
-        for (F_Query &q : dummyQueries)
-        {
-            if (q.query_type == 0 || q.query_type == 2 || q.query_type == 3)
-                continue;
-
-            std::set<float> F_q = {q.v};
-
-            auto r = fvamana.filteredGreedySearch(S, q.index, q.vec, conf.kNN, conf.max_candinates, F_q);
-
-            std::vector<int> nn = brute.getGtNNs(q.index, std::min(static_cast<size_t>(r.first.size()), static_cast<size_t>(conf.kNN)));
-
-            float e = calculateRecallEvaluation(r.first, nn);
-
-            spdlog::info("    - (Filter4Category) Recall(q[{}])@{}: {}%", q.index, conf.kNN, e * 100);
-        }
-
+        
         return EXIT_SUCCESS;
     }
     catch (const std::exception &e)

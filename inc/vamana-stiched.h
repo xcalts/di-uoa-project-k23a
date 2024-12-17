@@ -1,5 +1,5 @@
-#ifndef VAMANA_FILTERED_H
-#define VAMANA_FILTERED_H
+#ifndef VAMANA_STICHED_H
+#define VAMANA_STICHED_H
 
 /**********************/
 /* Standard Libraries */
@@ -13,6 +13,7 @@
 /**********************/
 
 #include "progressbar.h"
+#include "vamana.h"
 
 /**********************/
 /* Project Components */
@@ -29,6 +30,7 @@ class F_Query;
 class F_Vamana;
 // class S_Vamana;
 
+void saveResultsBinary(const std::map<int, std::set<int>> &results, const std::string &filename);
 std::vector<F_Point> parseDummyData(std::string &, int);
 std::vector<F_Query> parseDummyQueries(std::string &, int);
 
@@ -697,7 +699,127 @@ public:
             }
         }
     }
+
+
+    
+    /**
+     * @brief
+     * Creates a Graph out of a dataset with filters.
+     * Calls vamana index for each filter's dataset of compatible points. Running with smaller database can be more efficient.
+     * Connects all the smaller graphs to one.
+     * @param a
+     * Scaling factor to prune outgoing edges of a node (alpha).
+     * @param L_small
+     * Maximum list of search candidates to use in graph traversal, must be small to be more efficient.
+     * @param R_small
+     * Maximum number of outgoing edges of a node, must be small to be more efficient it is used in smaller graphs.
+     * @param R_stiched
+     * Maximum number of outgoing edges of a node, after the smaller graphs are stiched back together.
+     * @param tau
+     * The threshold.
+     */
+    void StichedVamanaIndex(float a , int L_small , int R_small , int R_stiched , int tau){
+        // A map to save the results of the stiched vamana and record the to a file
+        //std::map<int, std::set<int>> results;
+
+        // initialize G  = (V , E) to an empty graph
+        for (auto &p : dataset)
+        {
+            F.insert(p.C);
+            P_f[p.C].push_back(p.index);
+        }
+        // Let st ⊆ F be the label-set for every x ∈ P
+        st = findMedoids(tau);
+
+        // Let Pf ⊆ P be the set of points with label f ∈ F
+        std::vector<Point> pf ;
+
+        // foreach f ∈ F do 
+        progressbar bar(st.size());
+        for(auto f : st){
+            bar.update();
+            // map with real id and new id
+            std::map<int , int> old_Id;
+
+            // empty pf vector
+            pf.clear();
+            if(P_f[f.first].size() == 1){
+                // empty list of neighbors just the medoid
+                //results[f.second] = {};
+                continue;
+            }
+            // fill pf with points of filter f and add to each point a new id according to current position, we will restore it later
+            int new_id = 0;
+            for(int p_f :P_f[f.first]){
+                // create new point , add new point to pf , store old_Id of p to a map in order to restore
+                Point new_p = Point(new_id ,dataset[p_f].vec);
+                pf.push_back(new_p);
+                old_Id[new_id] = p_f;
+                new_id++;
+            }
+            // Let Gf ← Vamana(Pf, a, R_small ,L_small)
+            Vamana Pf = Vamana(pf);
+            Pf.calculateMedoid();
+
+            if(R_small >= pf.size() )
+                // If R_small is larger that the database re arrange R_small
+                Pf.index(a, L_small , pf.size() - 1);
+            else
+                Pf.index(a, L_small , R_small);
+
+            std::vector<Point> Gf = Pf.dataset;
+
+            // combine Gf with G
+            for(Point &p : Gf){
+                int old_id = old_Id.at(p.index);
+                std::set<int> p_neighbors;
+                for(Edge &neighbor : p.outgoing_edges){
+                    p_neighbors.emplace(neighbor.to_index);
+                }
+                dataset[old_id].neighbors = p_neighbors;
+                //results[old_id] = p_neighbors;
+            }
+
+        }
+
+        // foreach v ∈ V do   // this can be ignored because this points dont overlap through filters
+        //for(Point &p : dataset){
+            
+            // filteredRobustPrune(v , Nout(v) , a , R_stiched)
+        //    FilteredRobustPrune(p.index , p.neighbors , a , R_stiched);
+        //}
+    
+        // Save results to a binary file
+        //saveResultsBinary(results, "stitched_vamana_results.bin");
+    }
 };
+
+/**
+ * @brief 
+ * Saves map to a file
+ * @param results
+ * A map that contains keys and a set of values about the key
+ * @param filename
+ * Name of the file to store the data
+ */
+void saveResultsBinary(const std::map<int, std::set<int>> &results, const std::string &filename) {
+    std::ofstream outputFile(filename, std::ios::binary);
+    if (!outputFile.is_open()) {
+        throw std::runtime_error("Could not open file for writing: " + filename);
+    }
+
+    for (const auto &pair : results) {
+        int key = pair.first;
+        size_t setSize = pair.second.size();
+        outputFile << "Point " << key << ": ";
+        for(int neighbor : pair.second){
+            outputFile << neighbor << " ";
+        }   
+        outputFile << "\n";
+    }
+    outputFile.close();
+}
+
 
 /**
  * @brief
@@ -810,4 +932,4 @@ std::vector<F_Query> parseDummyQueries(std::string &filepath, int no_dimensions)
     return queries;
 }
 
-#endif // VAMANA_FILTERED_H
+#endif // VAMANA_STICHED_H
