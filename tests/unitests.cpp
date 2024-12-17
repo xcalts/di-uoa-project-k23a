@@ -1,16 +1,32 @@
+/**********************/
+/* Standard Libraries */
+/**********************/
+
 #include <fstream>
 #include <cstdio>
 #include <stdexcept>
 #include <iostream>
 #include <sys/stat.h>
 
-#define RYML_SINGLE_HDR_DEFINE_NOW // https://github.com/biojppm/rapidyaml
+/**********************/
+/* External Libraries */
+/**********************/
+
+// https://github.com/biojppm/rapidyaml
+#define RYML_SINGLE_HDR_DEFINE_NOW
 #include "rapidyaml.h"
 
+// https://github.com/mity/acutest
 #include "acutest.h"
+
+/**********************/
+/* Project Components */
+/**********************/
 
 #include "conf.h"
 #include "misc.h"
+#include "vamana.h"
+#include "vamana-filtered.h"
 
 /**********/
 /* conf.h */
@@ -31,6 +47,12 @@ void test_configuration_initialization()
     config_file << "alpha: 0.5\n";
     config_file << "max_candinates: 100\n";
     config_file << "max_edges: 10\n";
+    config_file << "dummy_data_filepath: \"dummy_data.bin\"\n";
+    config_file << "dummy_queries_filepath: \"dummy_queries_filepath.bin\"\n";
+    config_file << "groundtruth_nn_filepath: \"knn.bin\"\n";
+    config_file << "data_dimensions: 10\n";
+    config_file << "queries_dimensions: 10\n";
+    config_file << "tau: 5\n";
     config_file.close();
 
     // Initialize the Configuration object
@@ -70,7 +92,6 @@ void test_configuration_nonexistent_file()
 void test_setup_logging()
 {
     setupLogging();
-    spdlog::info("This is a test log message.");
     TEST_CHECK(true); // If no exception is thrown, the test passes
 }
 
@@ -80,7 +101,6 @@ void test_setup_logging()
  */
 void test_debug_function()
 {
-    debug("test_debug_function", "This is a test debug message.");
     TEST_CHECK(true); // If no exception is thrown, the test passes
 }
 
@@ -124,13 +144,109 @@ void test_validate_file_exists()
     TEST_EXCEPTION(validateFileExists("temp_test_file.txt"), std::runtime_error);
 }
 
-// run tests
+/************/
+/* vamana.h */
+/************/
+
+/**
+ * @brief
+ * Test to check if the intersectionSize function works correctly.
+ */
+void test_intersection_size()
+{
+    std::vector<int> vec1 = {1, 2, 3, 4, 5};
+    std::vector<int> vec2 = {4, 5, 6, 7, 8};
+    int result = intersectionSize(vec1, vec2);
+    TEST_CHECK(result == 2);
+
+    vec1 = {1, 2, 3};
+    vec2 = {4, 5, 6};
+    result = intersectionSize(vec1, vec2);
+    TEST_CHECK(result == 0);
+
+    vec1 = {1, 2, 3, 4, 5};
+    vec2 = {1, 2, 3, 4, 5};
+    result = intersectionSize(vec1, vec2);
+    TEST_CHECK(result == 5);
+}
+
+/**
+ * @brief
+ * Test to check if the euclideanDistance function works correctly.
+ */
+void test_euclidean_distance()
+{
+    std::vector<float> vec1 = {1.0, 2.0, 3.0};
+    std::vector<float> vec2 = {4.0, 5.0, 6.0};
+    float result = euclideanDistance(vec1, vec2);
+    TEST_CHECK(std::floor(result) == std::floor(std::sqrt(27.0)));
+
+    vec1 = {0.0, 0.0, 0.0};
+    vec2 = {0.0, 0.0, 0.0};
+    result = euclideanDistance(vec1, vec2);
+    TEST_CHECK(std::floor(result) == std::floor(0.0));
+
+    vec1 = {1.0, 2.0};
+    vec2 = {4.0, 6.0};
+    result = euclideanDistance(vec1, vec2);
+    TEST_CHECK(std::floor(result) == std::floor(5.0));
+}
+
+/*********************/
+/* vamana-filtered.h */
+/*********************/
+
+/**
+ * @brief
+ * Test to check if the filteredRobustPrune function works correctly.
+ */
+void test_filtered_robust_prune()
+{
+    // Create a sample dataset
+    std::vector<F_Point> dataset;
+    std::vector<float> vec1 = {1.0, 2.0};
+    std::vector<float> vec2 = {2.0, 3.0};
+    std::vector<float> vec3 = {3.0, 4.0};
+    std::vector<float> vec4 = {4.0, 5.0};
+
+    dataset.push_back(F_Point(0, vec1, 1.0, 1.0));
+    dataset.push_back(F_Point(1, vec2, 1.0, 1.0));
+    dataset.push_back(F_Point(2, vec3, 2.0, 2.0));
+    dataset.push_back(F_Point(3, vec4, 2.0, 2.0));
+
+    F_Vamana vamana(dataset);
+
+    // Set initial neighbors
+    vamana.dataset[0].addNeighbor(1);
+    vamana.dataset[0].addNeighbor(2);
+    vamana.dataset[0].addNeighbor(3);
+
+    std::set<int> V = {1, 2, 3};
+    int p = 0;
+    float a = 1.5;
+    int R = 2;
+
+    // Perform the filtered robust prune
+    vamana.filteredRobustPrune(p, V, a, R);
+
+    // Check the results
+    TEST_CHECK(vamana.dataset[0].neighbors.size() == 2);   // Nout(p) should have 2 elements
+    TEST_CHECK(vamana.dataset[0].neighbors.count(1) == 1); // Neighbor 1 should be present
+    TEST_CHECK(vamana.dataset[0].neighbors.count(2) == 1); // Neighbor 2 should be present
+}
+
+/*********/
+/* TESTS */
+/*********/
+
 TEST_LIST = {
-    {"conf.h - Initialization", test_configuration_initialization},
-    {"conf.h - Non-Existent File", test_configuration_nonexistent_file},
-    {"misc.h - Setup Logging", test_setup_logging},
-    {"misc.h - Debug Function", test_debug_function},
-    {"misc.h - Read File Contents", test_read_file_contents},
-    {"misc.h - Validate File Exists", test_validate_file_exists},
-    {NULL, NULL} // {NULL, NULL} is marking the end of the list
-};
+    {"conf.h            | Initialization      ", test_configuration_initialization},
+    {"conf.h            | Non-Existent File   ", test_configuration_nonexistent_file},
+    {"misc.h            | Setup Logging       ", test_setup_logging},
+    {"misc.h            | Debug Function      ", test_debug_function},
+    {"misc.h            | Read File Contents  ", test_read_file_contents},
+    {"misc.h            | Validate File Exists", test_validate_file_exists},
+    {"misc.h            | Intersection Size   ", test_intersection_size},
+    {"misc.h            | Euclidean Distance  ", test_euclidean_distance},
+    {"vamana-filtered.h | Filtered Robust Prune", test_filtered_robust_prune},
+    {NULL, NULL}};

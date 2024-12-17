@@ -1,9 +1,21 @@
 #ifndef CONF_H
 #define CONF_H
 
+/**********************/
+/* Standard Libraries */
+/**********************/
+
 #include <string>
 
+/**********************/
+/* External Libraries */
+/**********************/
+
 #include "rapidyaml.h"
+
+/**********************/
+/* Project Components */
+/**********************/
 
 #include "misc.h"
 
@@ -44,6 +56,12 @@ private:
         root["alpha"] >> alpha;
         root["max_candinates"] >> max_candinates;
         root["max_edges"] >> max_edges;
+        root["dummy_data_filepath"] >> dummy_data_filepath;
+        root["dummy_queries_filepath"] >> dummy_queries_filepath;
+        root["groundtruth_nn_filepath"] >> groundtruth_nn_filepath;
+        root["data_dimensions"] >> data_dimensions;
+        root["queries_dimensions"] >> queries_dimensions;
+        root["tau"] >> tau;
     }
 
 public:
@@ -88,6 +106,42 @@ public:
      * Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
      */
     int max_edges;
+
+    /**
+     * @brief
+     * The filepath to the Sigmod-Contest-2024 dataset of vectors.
+     */
+    std::string dummy_data_filepath;
+
+    /**
+     * @brief
+     * The filepath to the Sigmod-Contest-2024 dataset of query vectors.
+     */
+    std::string dummy_queries_filepath;
+
+    /**
+     * @brief
+     * The filepath to the ground-truth 10 nearest neighbors of the dummy queries.
+     */
+    std::string groundtruth_nn_filepath;
+
+    /**
+     * @brief
+     * The dimension of the dummy data of vectors.
+     */
+    int data_dimensions;
+
+    /**
+     * @brief
+     * The dimension of the dummy queries of vectors.
+     */
+    int queries_dimensions;
+
+    /**
+     * @brief
+     * The number of nearest neighbors to find.
+     */
+    int tau;
 
     /**
      * @brief
