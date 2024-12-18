@@ -71,9 +71,10 @@ To compile the program just run the following:
 ## Getting Started
 
 ```sh
-> tar xf siftsmall.tar.gz
 > make release
-> ./bin/k23a -c ./conf.yaml -a 1 -L 10 -R 10 -k 10
+> ./bin/vamana --conf ./conf.yaml
+> ./bin/vamana-filtered --conf ./conf.yaml
+> ./bin/vamana-stiched --conf ./conf.yaml
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
