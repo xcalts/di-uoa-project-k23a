@@ -90,16 +90,20 @@ int main(int argc, char **argv)
 
         spdlog::info("[+] Running the filtered vamana indexing.");
         fvamana.filteredVamanaIndexing(conf.tau, conf.alpha, conf.max_candinates, conf.max_edges);
+        std::cout << std::endl;
 
+        spdlog::info("[+] Evaluating the algorithm.");
         std::set<int> S;
+
         for (auto f : fvamana.F)
             S.insert(fvamana.st[f]);
-
-        int total = 0;
+        int intersection_total = 0;
         int query_count = 0;
-        float total_recall = 0.0;
+        int true_total = 0;
+        progressbar pbar(dummyQueries.size());
         for (F_Query &q : dummyQueries)
         {
+            pbar.update();
             if (q.query_type == 0 || q.query_type == 2 || q.query_type == 3)
                 continue;
 
@@ -109,10 +113,17 @@ int main(int argc, char **argv)
 
             std::vector<int> nn = brute.getGtNNs(q.index, std::min(static_cast<size_t>(r.first.size()), static_cast<size_t>(conf.kNN)));
 
-            float e = calculateRecallEvaluation(r.first, nn);
+            std::set<int> nn_set(nn.begin(), nn.end());
 
-            spdlog::info("    - (Filter4Category) Recall(q[{}])@{}: {}%", q.index, conf.kNN, e * 100);
+            int intersection = intersectionBetweenSetsSize(r.first, nn_set);
+
+            query_count++;
+            intersection_total += intersection;
+            true_total += r.first.size();
         }
+        std::cout << std::endl;
+        spdlog::info("    [i] recall@{}: {:.2f}%", conf.kNN, static_cast<float>(intersection_total) * 100.0f / static_cast<float>(true_total));
+        spdlog::info("");
 
         return EXIT_SUCCESS;
     }

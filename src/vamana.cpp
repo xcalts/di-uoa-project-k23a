@@ -1,7 +1,15 @@
+/**********************/
+/* Standard Libraries */
+/**********************/
+
 #include <iostream>
 #include <vector>
 #include <algorithm>
 #include <unordered_set>
+
+/**********************/
+/* External Libraries */
+/**********************/
 
 // https://github.com/adishavit/argh
 #include "argh.h"
@@ -13,6 +21,10 @@
 // https://github.com/gabime/spdlog
 #include "spdlog/spdlog.h"
 #include "spdlog/stopwatch.h"
+
+/************************/
+/* Project's Components */
+/************************/
 
 #include "conf.h"
 #include "misc.h"
@@ -55,24 +67,24 @@ int main(int argc, char *argv[])
         std::vector<std::vector<int>> ground_truth = parseIvecsFile(conf.evaluation_filepath);
         spdlog::info("    [i] Dataset: {} nodes ({})", dataset_points.size(), conf.dataset_filepath);
         spdlog::info("    [i] Queries: {} nodes ({})", query_points.size(), conf.queries_filepath);
-        spdlog::info("    [i] K Nearest Neighbors: {}", conf.kNN);
-        spdlog::info("    [i] Alpha: {}", conf.alpha);
-        spdlog::info("    [i] Max Candinates: {}", conf.max_candinates);
-        spdlog::info("    [i] Max Edges: {}", conf.max_edges);
+        spdlog::info("    [i] kNN: {}", conf.kNN);
+        spdlog::info("    [i] alpha: {}", conf.alpha);
+        spdlog::info("    [i] L: {}", conf.max_candinates);
+        spdlog::info("    [i] R: {}", conf.max_edges);
 
-        spdlog::info("[+] Initializing Vamana.");
+        spdlog::info("[+] Initializing the Vamana.");
         Vamana vamana = Vamana(dataset_points);
 
         spdlog::info("[+] Calculating the Medoid of the dataset.");
         sw.reset();
         vamana.calculateMedoid();
-        spdlog::info("    [i] Time Elapsed: {} seconds.", sw);
+        spdlog::info("    [i] Time Elapsed: {:.2f} seconds.", sw);
         spdlog::info("    [i] Medoid's Index: {}", vamana.medoid_idx);
 
         spdlog::info("[+] Indexing the graph using the Vamana algorithm.");
         sw.reset();
         vamana.index(conf.alpha, conf.max_candinates, conf.max_edges);
-        spdlog::info("    [i] Time Elapsed: {} seconds.", sw);
+        spdlog::info("    [i] Time Elapsed: {:.2f} seconds.", sw);
 
         spdlog::info("[+] Evaluating the algorithm.");
         int total = 0;
@@ -86,9 +98,9 @@ int main(int argc, char *argv[])
             if (idx == 0)
             {
                 sw.reset();
-                kNNs = vamana.greedySearchNearestNeighbors(vamana.medoid_idx, q, conf.kNN, conf.max_candinates);
+                kNNs = vamana.greedySearchQ(vamana.medoid_idx, q, conf.kNN, conf.max_candinates);
                 vamana_time = sw.elapsed().count();
-                spdlog::info("    [i] Vamana K-NN Request: {} seconds.", vamana_time);
+                spdlog::info("    [i] Vamana K-NN Request: {:.2f} seconds.", vamana_time);
 
                 sw.reset();
                 kNNs = vamana.bruteForceNearestNeighbors(q, conf.kNN);
@@ -99,17 +111,15 @@ int main(int argc, char *argv[])
                 spdlog::info("    [i] Vamana K-NN is {:.2f} times faster than brute-force.", speedup);
             }
 
-            kNNs = vamana.greedySearchNearestNeighbors(vamana.medoid_idx, q, conf.kNN, conf.max_candinates);
+            kNNs = vamana.greedySearchQ(vamana.medoid_idx, q, conf.kNN, conf.max_candinates);
             std::vector<int> gt_k(ground_truth[idx].begin(), ground_truth[idx].begin() + conf.kNN);
 
             total += intersectionSize(kNNs, gt_k);
         }
 
         spdlog::info("[+] Calculating the recall percentage..");
-        spdlog::info("    [i] correct: {}", total);
-        spdlog::info("    [i] query_points: {}", query_points.size());
-        spdlog::info("    [i] k: {}", conf.kNN);
-        spdlog::info("    [i] *: {}", (conf.kNN * (query_points.size() + 1)) * 100);
+        spdlog::info("    [i] queries: {}", query_points.size());
+        spdlog::info("    [i] kNN: {}", conf.kNN);
         float recall = static_cast<float>(total) / (conf.kNN * (query_points.size() + 1)) * 100;
         spdlog::info("    [i] Recall@{}: {:.2f}%.", conf.kNN, recall);
 

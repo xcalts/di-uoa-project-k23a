@@ -78,7 +78,7 @@ $(BIN_DIR)/unitests: $(UNIT_TESTS_OBJ)
 debug: CXXFLAGS += -DDEBUG -g
 debug: all
 
-release: CXXFLAGS += -O3 -march=native -ffast-math
+release: CXXFLAGS += -O3 -march=native
 release: all
 
 clean:

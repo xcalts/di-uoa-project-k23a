@@ -36,7 +36,7 @@ float euclideanDistance(const std::vector<float> &, const std::vector<float> &);
 std::vector<int> generateSigma(int);
 std::set<int> getSetDifference(std::set<int> &, std::set<int> &);
 int getSetItemAtIndex(int, std::set<int> &);
-double calculateRecallEvaluation(const std::set<int> &, const std::set<int> &);
+float calculateRecallEvaluation(const std::set<int> &, const std::set<int> &);
 
 /*******************/
 /* Implementations */
@@ -62,8 +62,8 @@ void setupLogging()
     spdlog::set_default_logger(spd_logger);
 
     // Change the 'printing' pattern.
-    // spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] %^[%l]%$ %v");
-    spdlog::set_pattern("%v");
+    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] %^[%l]%$ %v");
+    // spdlog::set_pattern("%v");
 }
 
 /**
@@ -317,7 +317,7 @@ int getSetItemAtIndex(int index, std::set<int> &set)
  * A double representing the recall, ranging from 0.0 (no relevant items retrieved)
  * to 1.0 (all relevant items retrieved).
  */
-double calculateRecallEvaluation(const std::set<int> &X, const std::vector<int> &G)
+float calculateRecallEvaluation(const std::set<int> &X, const std::vector<int> &G)
 {
     // Convert vector G to a set for intersection operation
     std::set<int> set_G(G.begin(), G.end());
@@ -333,7 +333,7 @@ double calculateRecallEvaluation(const std::set<int> &X, const std::vector<int> 
     unsigned int k = set_G.size();
 
     // Return the ratio of the size of the intersection to the size of set_G
-    return (double)result.size() / (double)k;
+    return (float)result.size() / (float)k;
 }
 
 #endif // MISC_H

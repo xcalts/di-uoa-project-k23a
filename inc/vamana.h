@@ -21,6 +21,7 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
+#include "progressbar.h"
 
 /**********************/
 /* Project Components */
@@ -271,9 +272,13 @@ public:
         float minimum_dist = std::numeric_limits<float>::max();
         int _medoid_idx = -1;
 
+        progressbar pbar(dataset.size());
+
         // Iterating through the points to calculate the node with the smallest total distance from the all rest points.
         for (int i = 0; i < dataset.size(); i++)
         {
+            pbar.update();
+
             float total_distance = 0.0f;
 
             for (int j = 0; j < dataset.size(); j++)
@@ -293,6 +298,8 @@ public:
         }
 
         medoid_idx = _medoid_idx;
+
+        std::cout << std::endl;
     }
 
     /**
@@ -463,7 +470,7 @@ public:
      * Maximum size of the candidate list L.
      * @return A pair of vectors: the list of found nodes and the list of visited nodes.
      */
-    std::vector<int> greedySearchNearestNeighbors(int source_idx, Point &query_point, int k, int L_size)
+    std::vector<int> greedySearchQ(int source_idx, Point &query_point, int k, int L_size)
     {
         std::vector<int> L;
         std::vector<int> V;
@@ -583,11 +590,6 @@ public:
      */
     void index(float a, int L, int R)
     {
-        spdlog::debug("+---------------------------+");
-        spdlog::debug("| Vamana Indexing Algorithm |");
-        spdlog::debug("+---------------------------+");
-        spdlog::debug("# a ← {} & L_size ← {} & R ← {} & s ← {}", a, L, R, medoid_idx);
-
         // initialize G to a random R-regular directed graph
         generateGraphEdges(R);
 
@@ -598,20 +600,14 @@ public:
         std::vector<int> sigma = generateSigma(dataset_size);
 
         // for 1 ≤ i ≤ n do
+        progressbar pbar(dataset_size, "[Vamana]: ");
         for (int i = 0; i < dataset_size; ++i)
         {
-
             // let [L; V] ← GreedySearch(s, σ(i), 1, L_size)
             std::pair<std::vector<int>, std::vector<int>> r = greedySearch(s, sigma[i], 1, L);
 
             // run RobustPrune(σ(i), V, a, R) to update out-neighbors of σ(i)
             robustPrune(sigma[i], r.second, a, R);
-
-            spdlog::debug("=====================================================================");
-            spdlog::debug("+ GreedySearch(s, σ({}), 1, {})", i, L);
-            spdlog::debug("# V ← {}", vectorToString(r.second));
-            spdlog::debug("+ RobustPrune(σ({}), V, a, R)", i);
-            spdlog::debug("# Neighbors(σ({}))) ← {}", i, neighborsTable(sigma[i]));
 
             // for all points j in Neighbors(σ(i))
             for (Edge &e : dataset[sigma[i]].outgoing_edges)
@@ -653,9 +649,9 @@ public:
 
                 spdlog::debug("---------------------------------------------------------------------");
             }
-        }
 
-        spdlog::debug("+---------------------------------------------------------------------------------+");
+            pbar.update();
+        }
     }
 };
 
