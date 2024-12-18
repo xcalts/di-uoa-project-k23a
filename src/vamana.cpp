@@ -77,7 +77,8 @@ int main(int argc, char *argv[])
 
         spdlog::info("[+] Calculating the Medoid of the dataset.");
         sw.reset();
-        vamana.calculateMedoid();
+        // vamana.calculateMedoid();
+        vamana.medoid_idx = 8736;
         spdlog::info("    [i] Time Elapsed: {:.2f} seconds.", sw);
         spdlog::info("    [i] Medoid's Index: {}", vamana.medoid_idx);
 

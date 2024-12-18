@@ -1,5 +1,5 @@
-#ifndef VAMANA_FILTERED_H
-#define VAMANA_FILTERED_H
+#ifndef VAMANA_STICHED_H
+#define VAMANA_STICHED_H
 
 /**********************/
 /* Standard Libraries */
@@ -13,6 +13,7 @@
 /**********************/
 
 #include "progressbar.h"
+#include "vamana.h"
 
 /**********************/
 /* Project Components */
@@ -29,6 +30,7 @@ class F_Query;
 class F_Vamana;
 // class S_Vamana;
 
+void saveResultsBinary(const std::map<int, std::set<int>> &results, const std::string &filename);
 std::vector<F_Point> parseDummyData(std::string &, int);
 std::vector<F_Query> parseDummyQueries(std::string &, int);
 
@@ -397,307 +399,130 @@ public:
 
     /**
      * @brief
-     * Implementation of the greedy search algorithm.
-     * @param S
-     * The set of the initial nodes. **Only 1 filter so we have only 1 starting node.**
-     * @param x_q
-     * The query point.
-     * @param k
-     * `k` approximate nearest neighbors.
-     * @param L_
-     * Search list size.
-     * @param F_q
-     * The query filter(s).
-     * @return std::pair<std::set<int>, std::set<int>>
-     * A pair of vectors: the list of the `L_size` nearest neighbors and the list of visited nodes.
-     */
-    std::pair<std::set<int>, std::set<int>> filteredGreedySearch(std::set<int> S, int x_q, std::vector<float> x_vec, int k, int L_, std::set<float> F_q)
-    {
-        // Initialize sets L ← ∅ and V ← ∅
-        std::set<int> L;
-        std::set<int> V;
-
-        // +---------------------------------+
-        // **IMPORTANT**
-        // We take into account only 1 filter!
-        // +---------------------------------+
-
-        // for s ∈ S do
-        for (int s : S)
-        {
-            // if F_s ∩ F_x ≠ ∅ then
-            bool _p = false;
-            for (int f : F_q)
-            {
-                if (dataset[s].C == f) // <-- :(
-                {
-                    _p = true;
-                    break;
-                }
-            }
-
-            // L ← L ∪ { s }
-            if (_p)
-                L.insert(s);
-        }
-
-        //  while L \ V ≠ ∅ do
-        while (true)
-        {
-            std::set<int> L_minus_V = getSetDifference(L, V);
-            if (L_minus_V.empty())
-                break;
-
-            // Let p* ← arg min(p ∈ L\V) ||x_p − x_q||
-            int p_star = -1;
-            float min_dist = std::numeric_limits<float>::max();
-            for (auto p_idx : L_minus_V)
-            {
-                float d = euclideanDistance(dataset[p_idx].vec, x_vec);
-                if (d < min_dist)
-                {
-                    min_dist = d;
-                    p_star = p_idx;
-                }
-            }
-
-            // V ← V ∪ {p*}
-            V.insert(p_star);
-
-            // +---------------------------------+
-            // **IMPORTANT**
-            // We take into account only 1 filter!
-            // +---------------------------------+
-            // Let N'out(p*) ← {p' ∈ Nout(p*) : F_p' ∩ F_q ≠ ∅, p' ∉ V}
-            std::set<int> Nout = dataset[p_star].neighbors;
-            std::set<int> Nout_tune;
-            for (int p_tune : Nout)
-            {
-                bool _p = false;
-
-                for (int f : F_q)
-                {
-                    if (dataset[p_tune].C == f)
-                    {
-                        _p = true; // <-- :(
-                        break;
-                    }
-                }
-
-                if (_p && V.count(p_tune) == 0)
-                    Nout_tune.insert(p_tune);
-            }
-
-            // L ← L ∪ N'out(p*)
-            for (int p_new : Nout_tune)
-                L.insert(p_new);
-
-            // if |L| > L_ then
-            //     Update L with the closest L nodes to x_q
-            if (L.size() > L_)
-            {
-                // Calculate the distance for each point in L.
-                std::multiset<std::pair<int, float>> point_distance;
-
-                for (int l : L)
-                    point_distance.emplace(l, euclideanDistance(dataset[l].vec, dataset[x_q].vec));
-
-                // Keep only the closest L points.
-                std::set<int> new_L;
-                int count = 0;
-                for (const auto p_d : point_distance)
-                {
-                    if (count >= L_)
-                        break; // Stop after X elements
-                    new_L.insert(p_d.first);
-                    ++count;
-                }
-
-                L = std::move(new_L);
-            }
-        }
-
-        // return the k closest points of L
-        // Get the k closest points from L
-        std::multiset<std::pair<int, float>> point_distance;
-        for (int l : L)
-            point_distance.emplace(l, euclideanDistance(dataset[l].vec, x_vec));
-
-        std::set<int> k_closest_points;
-        int count = 0;
-        for (const auto p_d : point_distance)
-        {
-            if (count >= k)
-                break; // Stop after k elements
-            k_closest_points.insert(p_d.first);
-            ++count;
-        }
-
-        // return the k closest points of L and V
-
-        // return [kNNs from L; V]
-        return {k_closest_points, V};
-    }
-
-    /**
-     * @brief
-     * Filtered Robust Prune Algorithm.
-     * @param p
-     * The point p ∈ P
-     * @param V
-     * The candinate set.
+     * Creates a Graph out of a dataset with filters.
+     * Calls vamana index for each filter's dataset of compatible points. Running with smaller database can be more efficient.
+     * Connects all the smaller graphs to one.
      * @param a
-     * The distance threshold a ≥ 1
-     * @param R
-     * Max outdegree bound.
+     * Scaling factor to prune outgoing edges of a node (alpha).
+     * @param L_small
+     * Maximum list of search candidates to use in graph traversal, must be small to be more efficient.
+     * @param R_small
+     * Maximum number of outgoing edges of a node, must be small to be more efficient it is used in smaller graphs.
+     * @param R_stiched
+     * Maximum number of outgoing edges of a node, after the smaller graphs are stiched back together.
+     * @param tau
+     * The threshold.
      */
-    void filteredRobustPrune(int p, std::set<int> &V, float a, int R)
+    void StichedVamanaIndex(float a, int L_small, int R_small, int R_stiched, int tau)
     {
-        // V ← V ∪ Nout(p) \ {p}
-        std::set<int> Nout = dataset[p].neighbors;
-        for (int n : Nout)
-            V.insert(n);
-        V.erase(p);
+        // A map to save the results of the stiched vamana and record the to a file
+        // std::map<int, std::set<int>> results;
 
-        // Nout(p) ← ∅
-        dataset[p].neighbors.clear();
-
-        // while V ≠ ∅ do
-        while (!V.empty())
-        {
-            // p* ← arg min(p′ ∈ V) || d(p, p') ||
-            int p_star = -1;
-            float min_d = std::numeric_limits<float>::max();
-            for (int p_tune : V)
-            {
-                float d = euclideanDistance(dataset[p].vec, dataset[p_tune].vec);
-                if (d < min_d)
-                {
-                    min_d = d;
-                    p_star = p_tune;
-                }
-            }
-
-            // Nout(p) ← Nout(p) ∪ {p*}
-            dataset[p].addNeighbor(p_star);
-
-            // if |Nout(p)| = R then
-            if (dataset[p].neighbors.size() == R)
-                break;
-
-            // for p' ∈ V do
-            std::set<int> V_copy = V;
-            std::vector<int> to_remove;
-            for (int p_tune : V_copy)
-            {
-                // +-------------------------------------+
-                // **IMPORTANT**
-                // We take into account only 1 filter!
-                // +-------------------------------------+
-                // if F_p′ ∩ F_p ⊄ F_p* then
-                //     continue
-                if (dataset[p_tune].C != dataset[p].C)
-                    if ((int)dataset[p_star].C == -1)
-                        continue;
-                    else if (dataset[p_star].C != dataset[p_tune].C)
-                        continue;
-
-                if (dataset[p_tune].C != dataset[p].C && dataset[p_star].C != dataset[p_tune].C)
-                    continue;
-
-                // if a · d(p∗, p′) ≤ d(p, p′) then remove p′ from V
-                float pstar_to_ptone = euclideanDistance(dataset[p_star].vec, dataset[p_tune].vec);
-                float p_to_ptone = euclideanDistance(dataset[p].vec, dataset[p_tune].vec);
-
-                if (a * pstar_to_ptone <= p_to_ptone)
-                    to_remove.push_back(p_tune);
-            }
-
-            // remove v from V
-            for (int remove_idx : to_remove)
-                V.erase(remove_idx);
-        }
-    }
-
-    /**
-     * @brief
-     * Impleentation of the filtered vamana indexing algorithm.
-     * @param a
-     * @param L
-     * @param R
-     */
-    void filteredVamanaIndexing(int tau, float a, int L, int R)
-    {
-        // Initialize G to an empty graph
+        // initialize G  = (V , E) to an empty graph
         for (auto &p : dataset)
         {
             F.insert(p.C);
             P_f[p.C].push_back(p.index);
         }
-
-        // Let s denote the medoid of P
-        // int s = findMedoid();
-        s = 5234;
-
-        // +-------------------------------------+
-        // **IMPORTANT**
-        // We take into account only 1 filter!
-        // +-------------------------------------+
-        // Let st(f) denote the start node for flter label f for every f ∈ F
+        // Let st ⊆ F be the label-set for every x ∈ P
         st = findMedoids(tau);
 
-        // Let σ be a random permutation of [n]
-        int n = dataset.size();
-        std::vector<int> sigma = generateSigma(n);
+        // Let Pf ⊆ P be the set of points with label f ∈ F
+        std::vector<Point> pf;
 
-        // Let F_x be the label-set for every x ∈ P
-        std::map<int, float> F_x;
-        for (F_Point &p : dataset)
-            F_x[p.index] = p.C;
-
-        // foreach i ∈ [n] do
-        progressbar bar(n);
-        for (int i = 0; i < n; i++)
+        // foreach f ∈ F do
+        progressbar bar(st.size());
+        for (auto f : st)
         {
             bar.update();
-            // +-------------------------------------+
-            // **IMPORTANT**
-            // We take into account only 1 filter!
-            // +-------------------------------------+
-            // Let S_F_x_σ[i] = { st(f) : f in F_X_σ[i] }
-            std::set<int> S_F_sigma_i;
-            std::set<float> F_sigma_i = {F_x[sigma[i]]};
-            S_F_sigma_i.insert(st[F_x[sigma[i]]]);
+            // map with real id and new id
+            std::map<int, int> old_Id;
 
-            // Let [∅; V_F_x_σ(i)] ← FilteredGreedySearch(S_F_x_σ(i), x_σ(i), 0, L, F_x_σ(i))
-            auto p = filteredGreedySearch(S_F_sigma_i, sigma[i], dataset[sigma[i]].vec, 0, L, F_sigma_i);
-
-            // V ← V ∪ V_F_x_σ(i)
-            // V is missing from the pseudocode
-            std::set<int> V = p.second;
-
-            // Run FilteredRobustPrune(x_σ(i), V_F_x_σ(i), a, R)
-            // to update neighbors of σ(i)
-            filteredRobustPrune(sigma[i], V, a, R);
-
-            // foreach j ∈ Nout(σ(i)) do
-            std::set<int> Nout_x = dataset[sigma[i]].neighbors;
-            for (int j : Nout_x)
+            // empty pf vector
+            pf.clear();
+            if (P_f[f.first].size() == 1)
             {
-                // Update Nout(j) ← Nout(j) ∪ {σ(i)}
-                dataset[j].addNeighbor(sigma[i]);
+                // empty list of neighbors just the medoid
+                // results[f.second] = {};
+                continue;
+            }
+            // fill pf with points of filter f and add to each point a new id according to current position, we will restore it later
+            int new_id = 0;
+            for (int p_f : P_f[f.first])
+            {
+                // create new point , add new point to pf , store old_Id of p to a map in order to restore
+                Point new_p = Point(new_id, dataset[p_f].vec);
+                pf.push_back(new_p);
+                old_Id[new_id] = p_f;
+                new_id++;
+            }
+            // Let Gf ← Vamana(Pf, a, R_small ,L_small)
+            Vamana Pf = Vamana(pf);
+            Pf.calculateMedoid();
 
-                // if |Nout(j)| > R then
-                if (dataset[j].neighbors.size() > R)
+            if (R_small >= pf.size())
+                // If R_small is larger that the database re arrange R_small
+                Pf.index(a, L_small, pf.size() - 1);
+            else
+                Pf.index(a, L_small, R_small);
+
+            std::vector<Point> Gf = Pf.dataset;
+
+            // combine Gf with G
+            for (Point &p : Gf)
+            {
+                int old_id = old_Id.at(p.index);
+                std::set<int> p_neighbors;
+                for (Edge &neighbor : p.outgoing_edges)
                 {
-                    // Run FilteredRobustPrune(j, Nout(j), a, R) to update out-neighbors of j
-                    // std::set<int> &Nout_j = dataset[j].neighbors;
-                    filteredRobustPrune(j, dataset[j].neighbors, a, R);
+                    p_neighbors.emplace(neighbor.to_index);
                 }
+                dataset[old_id].neighbors = p_neighbors;
+                // results[old_id] = p_neighbors;
             }
         }
+
+        // foreach v ∈ V do   // this can be ignored because this points dont overlap through filters
+        // for(Point &p : dataset){
+
+        // filteredRobustPrune(v , Nout(v) , a , R_stiched)
+        //    FilteredRobustPrune(p.index , p.neighbors , a , R_stiched);
+        //}
+
+        // Save results to a binary file
+        // saveResultsBinary(results, "stitched_vamana_results.bin");
     }
 };
+
+/**
+ * @brief
+ * Saves map to a file
+ * @param results
+ * A map that contains keys and a set of values about the key
+ * @param filename
+ * Name of the file to store the data
+ */
+void saveResultsBinary(const std::map<int, std::set<int>> &results, const std::string &filename)
+{
+    std::ofstream outputFile(filename, std::ios::binary);
+    if (!outputFile.is_open())
+    {
+        throw std::runtime_error("Could not open file for writing: " + filename);
+    }
+
+    for (const auto &pair : results)
+    {
+        int key = pair.first;
+        size_t setSize = pair.second.size();
+        outputFile << "Point " << key << ": ";
+        for (int neighbor : pair.second)
+        {
+            outputFile << neighbor << " ";
+        }
+        outputFile << "\n";
+    }
+    outputFile.close();
+}
 
 /**
  * @brief
@@ -810,4 +635,4 @@ std::vector<F_Query> parseDummyQueries(std::string &filepath, int no_dimensions)
     return queries;
 }
 
-#endif // VAMANA_FILTERED_H
+#endif // VAMANA_STICHED_H
