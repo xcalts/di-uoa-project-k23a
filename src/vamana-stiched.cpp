@@ -1,98 +1,210 @@
 /**********************/
 /* Standard Libraries */
 /**********************/
-
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <unordered_set>
+#include <random>
+#include <chrono>
+#include <thread>
+#include <set>
+#include <fstream>
 
 /**********************/
 /* External Libraries */
 /**********************/
+#include "stopwatch.h"
+#include <indicators/block_progress_bar.hpp>
 
-/* https://github.com/adishavit/argh */
-#include "argh.h"
-#include "progressbar.h"
-
-/* https://github.com/biojppm/rapidyaml */
-#define RYML_SINGLE_HDR_DEFINE_NOW
-#include "rapidyaml.h"
-
-/* https://github.com/gabime/spdlog */
-#include "spdlog/spdlog.h"
-#include "spdlog/stopwatch.h"
-
-/************************/
-/* Project's Components */
-/************************/
-
-// #include "brute.h"
-#include "conf.h"
-#include "misc.h"
+/**********************/
+/* Project Components */
+/**********************/
+#include "vamana.h"
 #include "vamana-stiched.h"
+#include "math.h"
+#include "sets.h"
+#include "vectors.h"
 
-int main(int argc, char **argv)
+/**************/
+/* Namespaces */
+/**************/
+using namespace indicators;
+
+StichedVamanaStatistics::StichedVamanaStatistics() {}
+
+StichedVamana::StichedVamana(const std::vector<Point> &_dataset)
 {
-    try
+    dataset = _dataset;
+}
+
+void StichedVamana::initializingEmptyGraph()
+{
+    BlockProgressBar bar{
+        option::BarWidth{80},
+        option::ForegroundColor{Color::blue},
+        option::PrefixText{"   Initializing empty G graph"},
+        option::FontStyles{
+            std::vector<FontStyle>{FontStyle::bold}},
+        option::MaxProgress{dataset.size()}};
+
+    int i = 0;
+    for (auto &p : dataset)
     {
-        std::string conf_filepath;
-        spdlog::stopwatch sw;
+        F.insert(p.C);
+        P_f[p.C].push_back(p);
 
-        setupLogging();
+        // Show iteration as postfix text
+        bar.set_option(option::PostfixText{
+            std::to_string(i + 1) + "/" + std::to_string(dataset.size())});
 
-        spdlog::info("[+] Parsing the command-line arguments.");
-        argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
+        // update progress bar
+        bar.tick();
 
-        spdlog::info("[+] Checking for insufficient amount of arguments.");
-        if (cmdl({"-h", "--help"}) || argc == 1)
+        i++;
+    }
+
+    bar.mark_as_completed();
+}
+
+StichedVamanaStatistics StichedVamana::index(float a, int L_small, int R_small, int R_stiched)
+{
+    sw::Stopwatch stopwatch;
+    StichedVamanaStatistics statistics;
+
+    // Initialize G = (V, E) to an empty graph
+    // Let F_x ⊆ F be the label-set for every x ∈ P
+    // Let P_f ⊆ P be the set of points with label f ∈ F
+    initializingEmptyGraph();
+
+    BlockProgressBar bar{
+        option::BarWidth{80},
+        option::ForegroundColor{Color::red},
+        option::PrefixText{"      Stiched Vamana Indexing"},
+        option::FontStyles{
+            std::vector<FontStyle>{FontStyle::bold}},
+        option::MaxProgress{dataset.size()}};
+    int i = 0;
+
+    // foreach f ∈ F do
+    for (float f : F)
+    {
+        // Let G_f ← Vamana(P_f, a, Rsmall , Lsmall )
+        G_f[f] = Vamana();
+        G_f[f].index(P_f[f], a, L_small, R_small);
+
+        // Show iteration as postfix text
+        bar.set_option(option::PostfixText{
+            std::to_string(i + 1) + "/" + std::to_string(dataset.size())});
+
+        // update progress bar
+        bar.tick();
+
+        i++;
+    }
+
+    bar.mark_as_completed();
+
+    // foreach v ∈ V do
+    //     FilteredRobustPrune (V, Nout(v), a, Rstitched )
+}
+
+void StichedVamana::saveGraph(const std::string &filepath)
+{
+    std::ofstream ofs(filepath);
+    if (!ofs.is_open())
+    {
+        std::cerr << "Error: Could not open file for saving: " << filepath << std::endl;
+        return;
+    }
+
+    // For each point in dataset, write:
+    // index:neighbor1,neighbor2,neighbor3,...
+    for (int i = 0; i < static_cast<int>(dataset.size()); i++)
+    {
+        // Print the index
+        ofs << dataset[i].index << ":";
+
+        // Print neighbors in comma-separated fashion
+        bool first = true;
+        for (int neighbor : dataset[i].neighbors)
         {
-            std::cout << "Usage: ./vamana-filtered --conf ./conf.yaml" << std::endl;
-            return EXIT_SUCCESS;
+            if (!first)
+                ofs << ",";
+            ofs << neighbor;
+            first = false;
         }
 
-        spdlog::info("[+] Validating the command-line arguments.");
-        cmdl({"-c", "--conf"}) >> conf_filepath;
-        validateFileExists(conf_filepath);
-
-        spdlog::info("[+] Parsing and validating the YAML configuration file.");
-        Configuration conf = Configuration(conf_filepath);
-        validateFileExists(conf.dummy_data_filepath);
-        validateFileExists(conf.dummy_queries_filepath);
-        validateFileExists(conf.groundtruth_nn_filepath);
-
-        spdlog::info("[+] Parsing the dummy dataset & queries.");
-        std::vector<F_Point> dummyData = parseDummyData(conf.dummy_data_filepath, conf.data_dimensions);
-        std::vector<F_Query> dummyQueries = parseDummyQueries(conf.dummy_queries_filepath, conf.queries_dimensions);
-
-        spdlog::info("[+] Printing all the parsed arguements.");
-        spdlog::info("    [i] Dummy Data: {} nodes ({})", dummyData.size(), conf.dummy_data_filepath);
-        spdlog::info("    [i] Queries: {} nodes ({})", dummyQueries.size(), conf.dummy_queries_filepath);
-        spdlog::info("    [i] K Nearest Neighbors: {}", conf.kNN);
-        spdlog::info("    [i] Alpha: {}", conf.alpha);
-        spdlog::info("    [i] Max Candinates: {}", conf.max_candinates);
-        spdlog::info("    [i] Max Edges: {}", conf.max_edges);
-        spdlog::info("    [i] τ: {}", conf.tau);
-
-        spdlog::info("[+] Initializing the filtered vanana algorithm.");
-        F_Vamana fvamana = F_Vamana(dummyData);
-
-        spdlog::info("[+] Initializing the brute-force algorithm.");
-        // Brute brute = Brute(dummyData);
-
-        // spdlog::info("[+] Calculating the GroundThruth kNNs.");
-        // brute.calculateDummyGroundTruth(dummyQueries, 100);
-        // brute.save("groundtruth-1000nn.txt");
-        // return EXIT_SUCCESS;
-
-        spdlog::info("[+] Running the stiched vamana indexing.");
-        fvamana.StichedVamanaIndex(conf.alpha, conf.max_candinates, conf.max_edges, conf.max_edges, conf.tau);
-
-        return EXIT_SUCCESS;
+        ofs << "\n"; // New line for each point
     }
-    catch (const std::exception &e)
+
+    ofs.close();
+}
+
+void StichedVamana::loadGraph(const std::string &filepath)
+{
+    std::ifstream ifs(filepath);
+    if (!ifs.is_open())
     {
-        std::cerr << "[!] " << e.what() << std::endl;
-        return EXIT_FAILURE;
+        std::cerr << "Error: Could not open file for loading: " << filepath << std::endl;
+        return;
+    }
+
+    // We'll read each line in "index:neighbor1,neighbor2,..." format
+    std::string line;
+    // Temporary adjacency list to store what we parse from file
+    std::vector<std::set<int>> adjacency;
+
+    while (std::getline(ifs, line))
+    {
+        // Find position of ':'
+        std::size_t colonPos = line.find(':');
+        if (colonPos == std::string::npos)
+        {
+            // Malformed line or empty
+            continue;
+        }
+
+        // Parse the index
+        int idx = std::stoi(line.substr(0, colonPos));
+
+        // Parse the neighbors substring (everything after ':')
+        std::string neighborsStr = line.substr(colonPos + 1);
+
+        // Split neighbors on comma
+        std::set<int> neighborSet;
+        {
+            std::stringstream ss(neighborsStr);
+            std::string segment;
+            while (std::getline(ss, segment, ','))
+            {
+                if (!segment.empty())
+                {
+                    neighborSet.insert(std::stoi(segment));
+                }
+            }
+        }
+
+        // Resize adjacency vector if needed
+        if (idx >= static_cast<int>(adjacency.size()))
+        {
+            adjacency.resize(idx + 1);
+        }
+        adjacency[idx] = neighborSet;
+    }
+
+    ifs.close();
+
+    // Ensure our main dataset can hold [0..(adjacency.size()-1)] as indexes
+    // If dataset is not yet sized or is smaller than we need, we resize here.
+    if (dataset.size() < adjacency.size())
+    {
+        dataset.resize(adjacency.size());
+        for (int i = 0; i < static_cast<int>(dataset.size()); i++)
+        {
+            dataset[i].index = i;
+        }
+    }
+
+    // Now copy the adjacency into dataset
+    for (int i = 0; i < static_cast<int>(adjacency.size()); i++)
+    {
+        dataset[i].neighbors = adjacency[i];
     }
 }

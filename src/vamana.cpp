@@ -1,133 +1,372 @@
 /**********************/
 /* Standard Libraries */
 /**********************/
-
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <unordered_set>
+#include <random>
+#include <chrono>
+#include <thread>
+#include <set>
+#include <fstream>
 
 /**********************/
 /* External Libraries */
 /**********************/
+#include "stopwatch.h"
+#include <indicators/block_progress_bar.hpp>
 
-// https://github.com/adishavit/argh
-#include "argh.h"
-
-// https://github.com/biojppm/rapidyaml
-#define RYML_SINGLE_HDR_DEFINE_NOW
-#include "rapidyaml.h"
-
-// https://github.com/gabime/spdlog
-#include "spdlog/spdlog.h"
-#include "spdlog/stopwatch.h"
-
-/************************/
-/* Project's Components */
-/************************/
-
-#include "conf.h"
-#include "misc.h"
+/**********************/
+/* Project Components */
+/**********************/
 #include "vamana.h"
+#include "math.h"
+#include "sets.h"
+#include "vectors.h"
 
-int main(int argc, char *argv[])
+/**************/
+/* Namespaces */
+/**************/
+using namespace indicators;
+
+VamanaStatistics::VamanaStatistics() {}
+
+Vamana::Vamana() {}
+
+void Vamana::generateRandomGraphEdges(int R)
 {
-    try
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, dataset.size() - 1);
+
+    BlockProgressBar bar{
+        option::BarWidth{80},
+        option::ForegroundColor{Color::grey},
+        option::PrefixText{"Generating Random Graph Edges"},
+        option::FontStyles{
+            std::vector<FontStyle>{FontStyle::bold}},
+        option::MaxProgress{dataset.size()}};
+
+    int dataset_size = dataset.size();
+    for (int i = 0; i < dataset_size; ++i)
     {
-        std::string conf_filepath;
-        spdlog::stopwatch sw;
+        Point &p = dataset[i];
 
-        // Setting up logging.
-        setupLogging();
+        while (p.neighbors.size() < R)
+            p.neighbors.insert(distrib(gen));
 
-        spdlog::info("[+] Parsing the command-line arguments.");
-        argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
-        cmdl({"-c", "--conf"}) >> conf_filepath;
+        // Show iteration as postfix text
+        bar.set_option(option::PostfixText{
+            std::to_string(i + 1) + "/" + std::to_string(dataset.size())});
 
-        if (cmdl({"-h", "--help"}) || argc == 1)
+        // update progress bar
+        bar.tick();
+    }
+
+    bar.mark_as_completed();
+}
+
+void Vamana::robustPrune(const Point &p, std::set<int> &V, float a, int R)
+{
+    // V ← (V ∪ Nout(p)) \ {p}
+    for (int n : dataset[p.index].neighbors)
+        V.insert(n);
+
+    V.erase(p.index);
+
+    // Nout(p) ← ∅
+    dataset[p.index].neighbors.clear();
+
+    // while V != ∅ do
+    while (!V.empty())
+    {
+        // p∗ ← arg min p'∈V d(p, p')
+        int pstar_idx = -1;
+        float pstar_dist = std::numeric_limits<float>::max();
+        for (int ptune_idx : V)
         {
-            std::cout << "Usage: ./vamana --conf ./conf.yaml" << std::endl;
-            return EXIT_FAILURE;
+            float d = euclideanDistance(dataset[ptune_idx].vec, p.vec);
+            if (d < pstar_dist)
+            {
+                pstar_dist = d;
+                pstar_idx = ptune_idx;
+            }
         }
 
-        spdlog::info("[+] Validating that the configuration filepath exists.");
-        validateFileExists(conf_filepath);
+        // Nout(p) ← Nout(p) ∪ {p∗}
+        dataset[p.index].neighbors.insert(pstar_idx);
 
-        spdlog::info("[+] Parsing the YAML configuration file.");
-        Configuration conf = Configuration(conf_filepath);
+        // if |Nout(p)| = R then break
+        if (dataset[p.index].neighbors.size() == R)
+            break;
 
-        spdlog::info("[+] Validating that the YAML configuration file's parameters.");
-        validateFileExists(conf.dataset_filepath);
-        validateFileExists(conf.queries_filepath);
-        validateFileExists(conf.evaluation_filepath);
-
-        spdlog::info("[+] Parsing the dataset/queries/ground-truth data and printing the parsed parameters.");
-        std::vector<Point> dataset_points = parseFvecsFile(conf.dataset_filepath);
-        std::vector<Point> query_points = parseFvecsFile(conf.queries_filepath);
-        std::vector<std::vector<int>> ground_truth = parseIvecsFile(conf.evaluation_filepath);
-        spdlog::info("    [i] Dataset: {} nodes ({})", dataset_points.size(), conf.dataset_filepath);
-        spdlog::info("    [i] Queries: {} nodes ({})", query_points.size(), conf.queries_filepath);
-        spdlog::info("    [i] kNN: {}", conf.kNN);
-        spdlog::info("    [i] alpha: {}", conf.alpha);
-        spdlog::info("    [i] L: {}", conf.max_candinates);
-        spdlog::info("    [i] R: {}", conf.max_edges);
-
-        spdlog::info("[+] Initializing the Vamana.");
-        Vamana vamana = Vamana(dataset_points);
-
-        spdlog::info("[+] Calculating the Medoid of the dataset.");
-        sw.reset();
-        // vamana.calculateMedoid();
-        vamana.medoid_idx = 8736;
-        spdlog::info("    [i] Time Elapsed: {:.2f} seconds.", sw);
-        spdlog::info("    [i] Medoid's Index: {}", vamana.medoid_idx);
-
-        spdlog::info("[+] Indexing the graph using the Vamana algorithm.");
-        sw.reset();
-        vamana.index(conf.alpha, conf.max_candinates, conf.max_edges);
-        spdlog::info("    [i] Time Elapsed: {:.2f} seconds.", sw);
-
-        spdlog::info("[+] Evaluating the algorithm.");
-        int total = 0;
-        std::vector<int> kNNs;
-        double vamana_time = 0.0;
-        double brute_time = 0.0;
-        for (size_t idx = 0; idx < query_points.size(); ++idx)
+        // for p' ∈ V do
+        std::vector<int> to_remove;
+        for (int ptune_idx : V)
         {
-            Point &q = query_points[idx];
+            float pstar_to_ptune = euclideanDistance(dataset[pstar_idx].vec, dataset[ptune_idx].vec);
+            float p_to_ptune = euclideanDistance(dataset[p.index].vec, dataset[ptune_idx].vec);
 
-            if (idx == 0)
+            // if α · d(p∗, p') ≤ d(p, p') then remove p' from V
+            if (a * pstar_to_ptune <= p_to_ptune)
+                to_remove.push_back(ptune_idx);
+        }
+
+        for (auto idx : to_remove)
+            V.erase(idx);
+    }
+}
+
+std::pair<std::set<int>, std::set<int>> Vamana::greedySearch(const Point &s, const Query &x_q, int k, int L_)
+{
+    // initialize sets L ← {s} and V ← ∅
+    std::set<int> L = {s.index};
+    std::set<int> V;
+
+    // While L\V != {}
+    std::set<int> L_minus_V;
+    while (true)
+    {
+        L_minus_V = getSetDifference(L, V);
+
+        // L\V ← {}, break
+        if (L_minus_V.empty())
+            break;
+
+        // p* ← min(||xp −xq||, p ∈ L\V)
+        int pstar_idx = -1;
+        float min_dist = std::numeric_limits<float>::max();
+        for (int p_idx : L_minus_V)
+        {
+            float d = euclideanDistance(dataset[p_idx].vec, x_q.vec);
+            if (d < min_dist)
             {
-                sw.reset();
-                kNNs = vamana.greedySearchQ(vamana.medoid_idx, q, conf.kNN, conf.max_candinates);
-                vamana_time = sw.elapsed().count();
-                spdlog::info("    [i] Vamana K-NN Request: {:.2f} seconds.", vamana_time);
+                min_dist = d;
+                pstar_idx = p_idx;
+            }
+        }
 
-                sw.reset();
-                kNNs = vamana.bruteForceNearestNeighbors(q, conf.kNN);
-                brute_time = sw.elapsed().count();
-                spdlog::info("    [i] Brute-force K-NN Request: {} seconds.", brute_time);
+        // update L ← L ∪ Nout (p∗ ) and V ← V ∪ {p∗ }
+        for (int n : dataset[pstar_idx].neighbors)
+            L.insert(n);
+        V.insert(pstar_idx);
 
-                double speedup = brute_time / vamana_time;
-                spdlog::info("    [i] Vamana K-NN is {:.2f} times faster than brute-force.", speedup);
+        // If |L| > L_
+        // +> update L to retain closest L points to x_q
+        if (L.size() > L_)
+        {
+            // Calculate the distance for each point in L.
+            std::vector<std::pair<int, float>> point_distance;
+
+            for (int l : L)
+                point_distance.emplace_back(l, euclideanDistance(dataset[l].vec, x_q.vec));
+
+            // Sort the point_distance by ascending distance (the float part).
+            std::sort(point_distance.begin(), point_distance.end(), [](const auto &a, const auto &b)
+                      { return a.second < b.second; });
+
+            // Keep only the closest L points.
+            std::set<int> new_L;
+            int count = 0;
+            for (const auto &p_d : point_distance)
+            {
+                if (count >= L_)
+                    break; // Stop after X elements
+                new_L.insert(p_d.first);
+                ++count;
             }
 
-            kNNs = vamana.greedySearchQ(vamana.medoid_idx, q, conf.kNN, conf.max_candinates);
-            std::vector<int> gt_k(ground_truth[idx].begin(), ground_truth[idx].begin() + conf.kNN);
+            L = std::move(new_L);
+        }
+    }
 
-            total += intersectionSize(kNNs, gt_k);
+    // Calculate the distance for each point in L.
+    std::vector<std::pair<int, float>> point_distance;
+
+    for (int l : L)
+        point_distance.emplace_back(l, euclideanDistance(dataset[l].vec, x_q.vec));
+
+    // Sort the point_distance by ascending distance (the float part).
+    std::sort(point_distance.begin(), point_distance.end(), [](const auto &a, const auto &b)
+              { return a.second < b.second; });
+
+    std::set<int> new_L;
+    int count = 0;
+    for (const auto &p_d : point_distance)
+    {
+        if (count >= k)
+            break;
+        new_L.insert(p_d.first);
+        ++count;
+    }
+
+    L = std::move(new_L);
+
+    return std::make_pair(L, V);
+}
+
+VamanaStatistics Vamana::index(const std::vector<Point> &P, float a, int L, int R)
+{
+    sw::Stopwatch stopwatch;
+    VamanaStatistics statistics;
+
+    // initialize G to a random R-regular directed graph
+    dataset = P;
+    generateRandomGraphEdges(R);
+
+    // let s denote the medoid of dataset P
+    stopwatch.start();
+    // s = findMedoid(dataset);
+    s = 8736;
+    statistics.medoid_calculation_time = stopwatch.elapsed<sw::s>();
+
+    // let σ denote a random permutation of 1..n
+    std::vector<int> sigma = generateSigma(dataset.size());
+
+    // for 1 ≤ i ≤ n do
+    BlockProgressBar bar{
+        option::BarWidth{80},
+        option::ForegroundColor{Color::blue},
+        option::PrefixText{"              Vamana Indexing"},
+        option::FontStyles{
+            std::vector<FontStyle>{FontStyle::bold}},
+        option::MaxProgress{dataset.size()}};
+
+    stopwatch.start();
+    for (int i = 0; i < dataset.size(); ++i)
+    {
+        // let [L; V] ← GreedySearch(s, xσ(i) , 1, L)
+        Query x_q(dataset[sigma[i]].vec);
+        std::pair<std::set<int>, std::set<int>> r = greedySearch(dataset[s], x_q, 1, L);
+
+        // run RobustPrune(σ(i), V, α, R) to update out-neighbors of σ(i)
+        robustPrune(dataset[sigma[i]], r.second, a, R);
+
+        // for all points j in Nout (σ(i)) do
+        for (int j : dataset[sigma[i]].neighbors)
+        {
+            // if |Nout(j) ∪ {σ(i)}| > R then
+            std::set<int> U = dataset[j].neighbors;
+            U.insert(sigma[i]);
+
+            if (U.size() > R)
+                robustPrune(dataset[j], U, a, R);
+            // else update Nout (j) ← Nout (j) ∪ σ(i)
+            else
+                dataset[j].neighbors.insert(sigma[i]);
         }
 
-        spdlog::info("[+] Calculating the recall percentage..");
-        spdlog::info("    [i] queries: {}", query_points.size());
-        spdlog::info("    [i] kNN: {}", conf.kNN);
-        float recall = static_cast<float>(total) / (conf.kNN * (query_points.size() + 1)) * 100;
-        spdlog::info("    [i] Recall@{}: {:.2f}%.", conf.kNN, recall);
+        // Show iteration as postfix text
+        bar.set_option(option::PostfixText{
+            std::to_string(i + 1) + "/" + std::to_string(dataset.size())});
 
-        return EXIT_SUCCESS;
+        // update progress bar
+        bar.tick();
     }
-    catch (const std::runtime_error &e)
+    statistics.vamana_indexing_time = stopwatch.elapsed<sw::s>();
+
+    bar.mark_as_completed();
+
+    return statistics;
+}
+
+void Vamana::saveGraph(const std::string &filepath)
+{
+    std::ofstream ofs(filepath);
+    if (!ofs.is_open())
     {
-        std::cerr << "[Exception] " << e.what() << std::endl;
+        std::cerr << "Error: Could not open file for saving: " << filepath << std::endl;
+        return;
+    }
+
+    // For each point in dataset, write:
+    // index:neighbor1,neighbor2,neighbor3,...
+    for (int i = 0; i < static_cast<int>(dataset.size()); i++)
+    {
+        // Print the index
+        ofs << dataset[i].index << ":";
+
+        // Print neighbors in comma-separated fashion
+        bool first = true;
+        for (int neighbor : dataset[i].neighbors)
+        {
+            if (!first)
+                ofs << ",";
+            ofs << neighbor;
+            first = false;
+        }
+
+        ofs << "\n"; // New line for each point
+    }
+
+    ofs.close();
+}
+
+void Vamana::loadGraph(const std::string &filepath)
+{
+    std::ifstream ifs(filepath);
+    if (!ifs.is_open())
+    {
+        std::cerr << "Error: Could not open file for loading: " << filepath << std::endl;
+        return;
+    }
+
+    // We'll read each line in "index:neighbor1,neighbor2,..." format
+    std::string line;
+    // Temporary adjacency list to store what we parse from file
+    std::vector<std::set<int>> adjacency;
+
+    while (std::getline(ifs, line))
+    {
+        // Find position of ':'
+        std::size_t colonPos = line.find(':');
+        if (colonPos == std::string::npos)
+        {
+            // Malformed line or empty
+            continue;
+        }
+
+        // Parse the index
+        int idx = std::stoi(line.substr(0, colonPos));
+
+        // Parse the neighbors substring (everything after ':')
+        std::string neighborsStr = line.substr(colonPos + 1);
+
+        // Split neighbors on comma
+        std::set<int> neighborSet;
+        {
+            std::stringstream ss(neighborsStr);
+            std::string segment;
+            while (std::getline(ss, segment, ','))
+            {
+                if (!segment.empty())
+                {
+                    neighborSet.insert(std::stoi(segment));
+                }
+            }
+        }
+
+        // Resize adjacency vector if needed
+        if (idx >= static_cast<int>(adjacency.size()))
+        {
+            adjacency.resize(idx + 1);
+        }
+        adjacency[idx] = neighborSet;
+    }
+
+    ifs.close();
+
+    // Ensure our main dataset can hold [0..(adjacency.size()-1)] as indexes
+    // If dataset is not yet sized or is smaller than we need, we resize here.
+    if (dataset.size() < adjacency.size())
+    {
+        dataset.resize(adjacency.size());
+        for (int i = 0; i < static_cast<int>(dataset.size()); i++)
+        {
+            dataset[i].index = i;
+        }
+    }
+
+    // Now copy the adjacency into dataset
+    for (int i = 0; i < static_cast<int>(adjacency.size()); i++)
+    {
+        dataset[i].neighbors = adjacency[i];
     }
 }
