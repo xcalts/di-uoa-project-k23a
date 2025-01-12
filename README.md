@@ -25,6 +25,11 @@
     ·
     <a href="https://github.com/xcalts/di-uoa-project-k23a/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
   </p>
+
+  <a href="https://github.com/xcalts/di-uoa-project-k23a">
+    <img src=".github/showcase.gif" alt="Logo" width="800">
+  </a>
+
 </div>
 
 <!-- TABLE OF CONTENTS -->
@@ -208,9 +213,9 @@ Terminal:                      xterm-256color
 
 ## Optimizations
 
-| Description                           | Before | After | Change (%) |
-| ------------------------------------- | ------ | ----- | ---------- |
-| Parallelization of medoid calculation | 40 sec | 7 sec | 82.5%      |
+| Description                                         | Before | After | Change (%) |
+| --------------------------------------------------- | ------ | ----- | ---------- |
+| Parallelization of medoid calculation using threads | 40 sec | 7 sec | 82.5%      |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
