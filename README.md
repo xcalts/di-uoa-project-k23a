@@ -26,10 +26,6 @@
     <a href="https://github.com/xcalts/di-uoa-project-k23a/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
   </p>
 
-  <a href="https://github.com/xcalts/di-uoa-project-k23a">
-    <img src=".github/showcase.gif" alt="Logo" width="800">
-  </a>
-
 </div>
 
 <!-- TABLE OF CONTENTS -->
@@ -49,6 +45,16 @@
     <li><a href="#license">License</a></li>
   </ol>
 </details>
+
+## Showcase
+
+Here is an example of how it works:
+
+<div align="center">
+  <a href="https://github.com/xcalts/di-uoa-project-k23a">
+    <img src=".github/showcase.gif" alt="Logo" width="800">
+  </a>
+</div>
 
 ## Requirements
 
