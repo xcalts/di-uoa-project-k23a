@@ -3,7 +3,7 @@
 #############
 BIN_DIR = bin
 CXX = g++
-CXXFLAGS = -std=c++14 -I./inc -I./libs
+CXXFLAGS = -std=c++14 -I./inc -I./libs -pthread
 TESTS_DIR = tests
 SRC_DIR = src
 SRC_OBJ_DIR = obj/src
