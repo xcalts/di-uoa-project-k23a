@@ -33,6 +33,7 @@
   <summary>Table of Contents</summary>
   <ol>
     <li><a href="#showcase">Showcase</a></li>
+    <li><a href="#team">Team</a></li>
     <li><a href="#requirements">Requirements</a></li>
     <li><a href="#build">Build</a></li>
     <li><a href="#getting-started">Getting Started</a></li>
@@ -41,7 +42,6 @@
     <li><a href="#used-datasets">Used Datasets</a></li>
     <li><a href="#system">System</a></li>
     <li><a href="#optimizations">Optimizations</a></li>
-    <li><a href="#team">Team</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
   </ol>
@@ -55,6 +55,21 @@ Here is an example of how it works:
   <a href="https://github.com/xcalts/di-uoa-project-k23a">
     <img src=".github/showcase.gif" alt="Logo" width="800">
   </a>
+</div>
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Team
+
+<div align="center">
+
+  <h3>National Kapodistrian University of Athens - Departments of Informatics</h3>
+
+| #   | Name                                               | Email                | UUID          |
+| --- | -------------------------------------------------- | -------------------- | ------------- |
+| 1   | [Christos Kaltsas](https://github.com/xcalts)      | sdi2000289@di.uoa.gr | 1115202000289 |
+| 2   | [Natalia Krikelli](https://github.com/nataliakrik) | sdi2000104@di.uoa.gr | 1115202000104 |
+
 </div>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -225,22 +240,6 @@ Terminal:                      xterm-256color
 | Description                                         | Before | After | Change (%) |
 | --------------------------------------------------- | ------ | ----- | ---------- |
 | Parallelization of medoid calculation using threads | 40 sec | 7 sec | 82.5%      |
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## Team
-
-<div align="center">
-
-  <p>National Kapodistrian University of Athens</p>
-  <p>Departments of Informatics</p>
-
-| #   | Name                                               | Email                | DI-UOA        |
-| --- | -------------------------------------------------- | -------------------- | ------------- |
-| 1   | [Christos Kaltsas](https://github.com/xcalts)      | sdi2000289@di.uoa.gr | 1115202000289 |
-| 2   | [Natalia Krikelli](https://github.com/nataliakrik) | sdi2000104@di.uoa.gr | 1115202000104 |
-
-</div>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
