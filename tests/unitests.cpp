@@ -226,6 +226,41 @@ void test_getSetDifference()
 }
 
 
+/**
+ * @brief 
+ * Test for the `getSetUnion` function.
+ */
+void test_getSetUnion()
+{
+    // Case 1: Standard union
+    std::set<int> set_a = {1, 2, 3};
+    std::set<int> set_b = {3, 4, 5};
+    std::set<int> expected = {1, 2, 3, 4, 5};
+
+    std::set<int> result = getSetUnion(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+
+    // Case 2: Completely disjoint sets
+    set_a = {1, 2, 3};
+    set_b = {4, 5, 6};
+    expected = {1, 2, 3, 4, 5, 6};
+
+    result = getSetUnion(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+
+    // Case 3: One empty set
+    set_a = {};
+    set_b = {1, 2, 3};
+    expected = {1, 2, 3};
+
+    result = getSetUnion(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+}
+
+
 /*********/
 /* TESTS */
 /*********/
@@ -236,4 +271,5 @@ TEST_LIST = {
     {"math.h            | Euclidean Distance  ", test_euclidean_distance},
     {"math.h            | Find Medoid         ", test_find_medoid},
     {"sets.h            | Set Difference      ", test_getSetDifference},
+    {"sets.h            | Set Union           ", test_getSetUnion},
     {NULL, NULL}};
