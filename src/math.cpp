@@ -21,7 +21,7 @@
 /**************/
 using namespace indicators;
 
-int findMedoid(const std::vector<Point> &dataset)
+Point findMedoid(std::vector<Point> &dataset)
 {
     float minimum_dist = std::numeric_limits<float>::max();
     int _medoid_idx = -1;
@@ -64,7 +64,7 @@ int findMedoid(const std::vector<Point> &dataset)
 
     bar.mark_as_completed();
 
-    return _medoid_idx;
+    return dataset[_medoid_idx];
 }
 
 float euclideanDistance(const std::vector<float> &a, const std::vector<float> &b)

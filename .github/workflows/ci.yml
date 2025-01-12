@@ -2,25 +2,25 @@ name: C++ CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   tests:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential g++ make cmake git
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential g++ make cmake git
 
-    - name: Build the project
-      run: make unitests
+      - name: Build the project
+        run: make release
 
-    - name: Run unit tests
-      run: make test
+      - name: Run unit tests
+        run: ./bin/unitests

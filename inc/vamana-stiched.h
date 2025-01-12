@@ -22,12 +22,6 @@ class StichedVamanaStatistics
 public:
     /**
      * @brief
-     * The time in seconds of the medoid's calculation.
-     */
-    std::uint64_t medoid_calculation_time;
-
-    /**
-     * @brief
      * The time in seconds of the stiched vamana index algorithm.
      */
     std::uint64_t stiched_vamana_indexing_time;
@@ -87,13 +81,59 @@ public:
      * @param _dataset
      * The dataset.
      */
-    StichedVamana(const std::vector<Point> &_dataset);
+    StichedVamana(std::vector<Point> &_dataset);
 
     /**
      * @brief
      * Initialize some stiched vamanna structures.
      */
     void initializingEmptyGraph();
+
+    /**
+     * @brief
+     * Get a random sample of a vector of size `tau`.
+     * @param vec
+     * The vector to take a sample from.
+     * @param tau
+     * The size of the sample.
+     * @return std::vector<int>
+     */
+    std::vector<int> randomSample(std::vector<int> &P_f, int tau);
+
+    /**
+     * @brief
+     * Get the points that match that filter.
+     * @param f
+     * The filter.
+     * @return std::vector<int>
+     */
+    std::vector<int> getPointsWithFilter(float f);
+
+    /**
+     * @brief
+     * Find the medoids per filter.
+     * @param tau
+     * The threshold.
+     */
+    std::map<float, int> findMedoids(int tau);
+
+    /**
+     * @brief
+     * Implementation of the Filtered Greedy Search algorithm.
+     * @param S
+     * The set of the initial nodes. **Only 1 filter so we have only 1 starting node.**
+     * @param x_q
+     * The query point.
+     * @param k
+     * `k` approximate nearest neighbors.
+     * @param L_
+     * Search list size.
+     * @param F_q
+     * The query filter(s).
+     * @return std::pair<std::set<int>, std::set<int>>
+     * A pair of vectors: the list of the `L_size` nearest neighbors and the list of visited nodes.
+     */
+    std::pair<std::set<int>, std::set<int>> filteredGreedySearch(const std::set<int> &S, const Query &x_q, int k, int L_, const std::set<float> &F_q);
 
     /**
      * @brief

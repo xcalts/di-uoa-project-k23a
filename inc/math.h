@@ -21,7 +21,7 @@
  * @return Point &
  * The `Point` that is the medoid of the dataset.
  */
-int findMedoid(const std::vector<Point> &dataset);
+Point findMedoid(std::vector<Point> &dataset);
 
 /**
  * @brief

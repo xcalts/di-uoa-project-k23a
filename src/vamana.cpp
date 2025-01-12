@@ -1,11 +1,14 @@
 /**********************/
 /* Standard Libraries */
 /**********************/
+#include <algorithm>
 #include <random>
+#include <sstream>
 #include <chrono>
 #include <thread>
 #include <set>
 #include <fstream>
+#include <limits>
 
 /**********************/
 /* External Libraries */
@@ -30,11 +33,11 @@ VamanaStatistics::VamanaStatistics() {}
 
 Vamana::Vamana() {}
 
-void Vamana::generateRandomGraphEdges(int R)
+void Vamana::generateRandomGraphEdges(std::vector<Point> &dataset, std::vector<Point> &P, int R)
 {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> distrib(0, dataset.size() - 1);
+    std::uniform_int_distribution<> distrib(0, P.size() - 1);
 
     BlockProgressBar bar{
         option::BarWidth{80},
@@ -42,28 +45,33 @@ void Vamana::generateRandomGraphEdges(int R)
         option::PrefixText{"Generating Random Graph Edges"},
         option::FontStyles{
             std::vector<FontStyle>{FontStyle::bold}},
-        option::MaxProgress{dataset.size()}};
+        option::MaxProgress{P.size()}};
 
-    int dataset_size = dataset.size();
-    for (int i = 0; i < dataset_size; ++i)
+    int i = 0;
+    for (const Point &p : P)
     {
-        Point &p = dataset[i];
-
-        while (p.neighbors.size() < R)
-            p.neighbors.insert(distrib(gen));
+        int attempts = 0;
+        int max_attempts = P.size() * 2; // Arbitrary large number to prevent infinite loop
+        while (dataset[p.index].neighbors.size() < R && attempts < max_attempts)
+        {
+            dataset[p.index].neighbors.insert(distrib(gen));
+            attempts++;
+        }
 
         // Show iteration as postfix text
         bar.set_option(option::PostfixText{
-            std::to_string(i + 1) + "/" + std::to_string(dataset.size())});
+            std::to_string(i + 1) + "/" + std::to_string(P.size())});
 
         // update progress bar
         bar.tick();
+
+        i++;
     }
 
     bar.mark_as_completed();
 }
 
-void Vamana::robustPrune(const Point &p, std::set<int> &V, float a, int R)
+void Vamana::robustPrune(std::vector<Point> &dataset, Point &p, std::set<int> &V, float a, int R)
 {
     // V ← (V ∪ Nout(p)) \ {p}
     for (int n : dataset[p.index].neighbors)
@@ -114,7 +122,7 @@ void Vamana::robustPrune(const Point &p, std::set<int> &V, float a, int R)
     }
 }
 
-std::pair<std::set<int>, std::set<int>> Vamana::greedySearch(const Point &s, const Query &x_q, int k, int L_)
+std::pair<std::set<int>, std::set<int>> Vamana::greedySearch(std::vector<Point> &dataset, Point &s, Query &x_q, int k, int L_)
 {
     // initialize sets L ← {s} and V ← ∅
     std::set<int> L = {s.index};
@@ -202,23 +210,21 @@ std::pair<std::set<int>, std::set<int>> Vamana::greedySearch(const Point &s, con
     return std::make_pair(L, V);
 }
 
-VamanaStatistics Vamana::index(const std::vector<Point> &P, float a, int L, int R)
+VamanaStatistics Vamana::index(std::vector<Point> &dataset, std::vector<Point> &P, float a, int L, int R)
 {
     sw::Stopwatch stopwatch;
     VamanaStatistics statistics;
 
     // initialize G to a random R-regular directed graph
-    dataset = P;
-    generateRandomGraphEdges(R);
+    generateRandomGraphEdges(dataset, P, R);
 
     // let s denote the medoid of dataset P
     stopwatch.start();
-    // s = findMedoid(dataset);
-    s = 8736;
+    S = findMedoid(P);
     statistics.medoid_calculation_time = stopwatch.elapsed<sw::s>();
 
     // let σ denote a random permutation of 1..n
-    std::vector<int> sigma = generateSigma(dataset.size());
+    std::vector<int> sigma = generateSigma(P.size());
 
     // for 1 ≤ i ≤ n do
     BlockProgressBar bar{
@@ -227,35 +233,39 @@ VamanaStatistics Vamana::index(const std::vector<Point> &P, float a, int L, int 
         option::PrefixText{"              Vamana Indexing"},
         option::FontStyles{
             std::vector<FontStyle>{FontStyle::bold}},
-        option::MaxProgress{dataset.size()}};
+        option::MaxProgress{P.size()}};
 
     stopwatch.start();
-    for (int i = 0; i < dataset.size(); ++i)
+    for (int i = 0; i < P.size(); ++i)
     {
+        Point &s_i = dataset[sigma[i]];
+
         // let [L; V] ← GreedySearch(s, xσ(i) , 1, L)
-        Query x_q(dataset[sigma[i]].vec);
-        std::pair<std::set<int>, std::set<int>> r = greedySearch(dataset[s], x_q, 1, L);
+        Query x_q(s_i.vec);
+        std::pair<std::set<int>, std::set<int>> r = greedySearch(dataset, S, x_q, 1, L);
 
         // run RobustPrune(σ(i), V, α, R) to update out-neighbors of σ(i)
-        robustPrune(dataset[sigma[i]], r.second, a, R);
+        robustPrune(dataset, s_i, r.second, a, R);
 
         // for all points j in Nout (σ(i)) do
-        for (int j : dataset[sigma[i]].neighbors)
+        for (int j : s_i.neighbors)
         {
+            Point &J = dataset[j];
+
             // if |Nout(j) ∪ {σ(i)}| > R then
-            std::set<int> U = dataset[j].neighbors;
+            std::set<int> U = J.neighbors;
             U.insert(sigma[i]);
 
             if (U.size() > R)
-                robustPrune(dataset[j], U, a, R);
+                robustPrune(dataset, J, U, a, R);
             // else update Nout (j) ← Nout (j) ∪ σ(i)
             else
-                dataset[j].neighbors.insert(sigma[i]);
+                J.neighbors.insert(sigma[i]);
         }
 
         // Show iteration as postfix text
         bar.set_option(option::PostfixText{
-            std::to_string(i + 1) + "/" + std::to_string(dataset.size())});
+            std::to_string(i + 1) + "/" + std::to_string(P.size())});
 
         // update progress bar
         bar.tick();
@@ -267,7 +277,7 @@ VamanaStatistics Vamana::index(const std::vector<Point> &P, float a, int L, int 
     return statistics;
 }
 
-void Vamana::saveGraph(const std::string &filepath)
+void Vamana::saveGraph(std::vector<Point> &dataset, const std::string &filepath)
 {
     std::ofstream ofs(filepath);
     if (!ofs.is_open())
@@ -275,6 +285,9 @@ void Vamana::saveGraph(const std::string &filepath)
         std::cerr << "Error: Could not open file for saving: " << filepath << std::endl;
         return;
     }
+
+    // Save the medoid index as the first line
+    ofs << S.index << "\n";
 
     // For each point in dataset, write:
     // index:neighbor1,neighbor2,neighbor3,...
@@ -299,7 +312,7 @@ void Vamana::saveGraph(const std::string &filepath)
     ofs.close();
 }
 
-void Vamana::loadGraph(const std::string &filepath)
+void Vamana::loadGraph(std::vector<Point> &dataset, const std::string &filepath)
 {
     std::ifstream ifs(filepath);
     if (!ifs.is_open())
@@ -308,11 +321,22 @@ void Vamana::loadGraph(const std::string &filepath)
         return;
     }
 
-    // We'll read each line in "index:neighbor1,neighbor2,..." format
+    // Read the first line to get the medoid index
     std::string line;
+    if (std::getline(ifs, line))
+    {
+        S.index = std::stoi(line); // Set the medoid index
+    }
+    else
+    {
+        std::cerr << "Error: File is empty or missing medoid index." << std::endl;
+        return;
+    }
+
     // Temporary adjacency list to store what we parse from file
     std::vector<std::set<int>> adjacency;
 
+    // Read the rest of the lines in "index:neighbor1,neighbor2,..." format
     while (std::getline(ifs, line))
     {
         // Find position of ':'

@@ -60,7 +60,7 @@ public:
      * @brief
      * The medoid index of the dataset.
      */
-    int s;
+    Point S;
 
     /**
      * @brief
@@ -72,16 +72,22 @@ public:
      * @brief
      * Generates initial random outgoing edges for each point in the dataset.
      * Each point will have exactly `R` outgoing edges to random other points (excluding itself).
+     * @param dataset
+     * A reference to the dataset.
+     * @param P
+     * The dataset of points you want to generate random graph edges for.
      * @param R
-     * The number of outgoing edges (neighbors) each point should have.
+     * The number of neighbours each point should have.
      */
-    void generateRandomGraphEdges(int R);
+    void generateRandomGraphEdges(std::vector<Point> &dataset, std::vector<Point> &P, int R);
 
     /**
      * @brief
      * It prunes the list of candidate neighbors for a given `Point` based on a
      * pruning condition that involves an `alpha` scaling factor.
      * It ensures that the `Point` has at most R outgoing edges to its nearest neighbors.
+     * @param dataset
+     * A reference to the dataset.
      * @param p
      * The point p ∈ P.
      * @param V
@@ -91,11 +97,13 @@ public:
      * @param R
      * The degree bound.
      */
-    void robustPrune(const Point &p, std::set<int> &V, float a, int R);
+    void robustPrune(std::vector<Point> &dataset, Point &p, std::set<int> &V, float a, int R);
 
     /**
      * @brief
      * Implementation of the Greedy Search algorithm.
+     * @param dataset
+     * A reference to the dataset.
      * @param s
      * The start node.
      * @param x_q
@@ -107,14 +115,16 @@ public:
      * @return std::pair<std::vector<int>, std::vector<int>>
      * A pair of vectors: the list of the `L_size` nearest neighbors and the list of visited nodes.
      */
-    std::pair<std::set<int>, std::set<int>> greedySearch(const Point &s, const Query &x_q, int k, int L_);
+    std::pair<std::set<int>, std::set<int>> greedySearch(std::vector<Point> &dataset, Point &s, Query &x_q, int k, int L_);
 
     /**
      * @brief
      * Creates an in-memory index on the supplied nodes to efficiently answer approximate nearest neighbor queries.
      * The N nodes must already be initialized as a random graph of outgoing edges with maximum of log(N) outgoing edges per node.
+     * @param dataset
+     * A reference to the dataset.
      * @param P
-     * The dataset of points.
+     * A dataset of points.
      * @param a
      * Scaling factor to prune outgoing eges of a node (alpha).
      * @param L
@@ -122,23 +132,27 @@ public:
      * @param R
      * Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
      */
-    VamanaStatistics index(const std::vector<Point> &P, float a, int L, int R);
+    VamanaStatistics index(std::vector<Point> &dataset, std::vector<Point> &P, float a, int L, int R);
 
     /**
      * @brief
      * Saves the graph to a file.
+     * @param dataset
+     * A reference to the dataset.
      * @param filepath
      * The file's path to save the graph.
      */
-    void saveGraph(const std::string &filepath);
+    void saveGraph(std::vector<Point> &dataset, const std::string &filepath);
 
     /**
      * @brief
      * Loads the graph from a file.
+     * @param dataset
+     * A reference to the dataset.
      * @param filepath
      * The file's path to load the graph.
      */
-    void loadGraph(const std::string &filepath);
+    void loadGraph(std::vector<Point> &dataset, const std::string &filepath);
 };
 
 #endif // VAMANA_H

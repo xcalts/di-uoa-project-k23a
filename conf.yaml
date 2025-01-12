@@ -27,5 +27,5 @@ tau: 2                                                                        # 
 # Stiched Vamana #
 ##################
 L_small: 150   # Smaller than L.
-R_small: 12    # Smaller than R.
-R_stiched: 20  # The number of outgoing edges of a node in the stiched graph.
+R_small: 30    # Smaller than R.
+R_stiched: 40  # The number of outgoing edges of a node in the stiched graph.

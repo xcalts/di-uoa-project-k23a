@@ -111,8 +111,6 @@ public:
     /**
      * @brief
      * Find the medoids per filter.
-     * @param P
-     * The dataset P with associated filters for all the points.
      * @param tau
      * The threshold.
      */
