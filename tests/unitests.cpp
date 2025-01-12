@@ -24,6 +24,7 @@
 /**********************/
 
 #include "configuration.h"
+#include "math.h"
 
 /**********/
 /* conf.h */
@@ -84,6 +85,34 @@ void test_configuration_nonexistent_file()
     TEST_EXCEPTION(config.initialize("najsfdjalsjfdlasdjf"), std::runtime_error);
 }
 
+
+/**********/
+/* math.h */
+/**********/
+
+/**
+ * @brief
+ * Test to check the Euclidean Distance Calculation
+ */
+void test_euclidean_distance()
+{
+    // Test for 2-dimensional vectors
+    std::vector<float> vec1 = {1.0, 2.0};
+    std::vector<float> vec2 = {4.0, 6.0};
+    float real_distance = 5.0;
+    TEST_CHECK(std::abs(euclideanDistance(vec1, vec2) - real_distance) == 0);
+
+    // Test for 3-dimensional vectors
+    std::vector<float> vec3 = {1.0, 2.0, 3.0};
+    std::vector<float> vec4 = {4.0, 5.0, 6.0};
+    real_distance = std::sqrt(27); 
+    TEST_CHECK(std::abs(euclideanDistance(vec3, vec4) - real_distance) == 0);
+
+    // Test for identical vectors 
+    TEST_CHECK(std::abs(euclideanDistance(vec1, vec1)) == 0);
+}
+
+
 /*********/
 /* TESTS */
 /*********/
@@ -91,4 +120,5 @@ void test_configuration_nonexistent_file()
 TEST_LIST = {
     {"conf.h            | Initialization      ", test_configuration_initialization},
     {"conf.h            | Non-Existent File   ", test_configuration_nonexistent_file},
+    {"math.h            | Euclidean Distance  ", test_euclidean_distance},
     {NULL, NULL}};
