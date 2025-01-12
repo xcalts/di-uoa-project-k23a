@@ -28,6 +28,6 @@ void validateCommand(const std::string &cli_command)
 
 void validateAlgorithm(const std::string &algorithm)
 {
-    if (algorithm != VAMANA || algorithm != FILTERED_VAMANA || algorithm != STICHED_VAMANA)
-        throw std::runtime_error("The only valid algorithms are: \"" + VAMANA + "\"" + ", \"" + FILTERED_VAMANA + "\"" + ", and \"" + STICHED_VAMANA + "\"");
+    if (algorithm != VAMANA || algorithm != FILTERED_VAMANA || algorithm != STICHED_VAMANA || algorithm != BRUTE)
+        throw std::runtime_error("The only valid algorithms are: \"" + VAMANA + "\"" + ", \"" + FILTERED_VAMANA + "\"" + " \"" + STICHED_VAMANA + "\" and \"" + BRUTE + "\"");
 }

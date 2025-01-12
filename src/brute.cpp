@@ -132,6 +132,39 @@ std::vector<int> Brute::bruteForceNearestNeighbors(const Query &q, int k)
     return neighbors;
 }
 
+std::set<int> Brute::bruteForceNNs(const Query &q, int k)
+{
+    std::vector<std::pair<float, int>> distances;
+
+    distances.reserve(dataset.size());
+    for (const auto &p : dataset)
+    {
+        float dist = euclideanDistance(q.vec, p.vec);
+        distances.push_back(std::make_pair(dist, p.index));
+    }
+
+    std::nth_element(
+        distances.begin(),
+        distances.begin() + k,
+        distances.end(),
+        [](const std::pair<float, int> &a, const std::pair<float, int> &b)
+        {
+            return a.first < b.first;
+        });
+
+    // Extract the indices of the k nearest neighbors in order
+    std::set<int> neighbors;
+    for (int i = 0; i < k; ++i)
+    {
+        neighbors.insert(distances[i].second);
+    }
+
+    // free the memory
+    distances.clear();
+
+    return neighbors;
+}
+
 void Brute::calculateDummyGroundTruth(const std::vector<Query> &dummyQueries, int k)
 {
     BlockProgressBar bar{

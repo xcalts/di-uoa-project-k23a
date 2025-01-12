@@ -83,6 +83,8 @@ public:
      */
     std::vector<int> bruteForceNearestNeighbors(const Query &q, int k);
 
+    std::set<int> bruteForceNNs(const Query &q, int k);
+
     /**
      * @brief
      * Calculate the ground truth kNNs for the dummy queries.

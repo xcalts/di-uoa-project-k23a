@@ -44,6 +44,7 @@
     <li><a href="#optimizations">Optimizations</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
+    <li><a href="#references">References</a></li>
   </ol>
 </details>
 
@@ -210,7 +211,7 @@ We assure that at least 100 data points in D meet the query limit.
 
 ## System
 
-All the times were recording on the following system:
+All the times were recorded on the following system:
 
 ```sh
 Linux Distribution:            Debian GNU/Linux 12 (bookworm)
@@ -275,6 +276,13 @@ Don't forget to give the project a star! Thanks again!
 ## License
 
 Distributed under the MIT License. See `LICENSE.txt` for more information.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## References
+
+- [DiskANN: Fast Accurate Billion-point Nearest Neighbor Search on a Single Node](https://suhasjs.github.io/files/diskann_neurips19.pdf)
+- [Filtered-DiskANN: Graph Algorithms for Approximate Nearest Neighbor Search with Filters](https://dl.acm.org/doi/10.1145/3543507.3583552)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

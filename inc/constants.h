@@ -19,6 +19,7 @@ const std::string CLI_GTNN = "generate-groundtruth";
 const std::string VAMANA = "vamana";
 const std::string FILTERED_VAMANA = "filtered-vamana";
 const std::string STICHED_VAMANA = "stiched-vamana";
+const std::string BRUTE = "brute";
 
 /*******/
 /* Log */

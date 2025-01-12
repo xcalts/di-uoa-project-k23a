@@ -1,31 +1,31 @@
 ##########
 # Vamana #
 ##########
-dataset_filepath: "data/siftsmall/siftsmall_base.fvecs"              # The filepath to the FVECS dataset of image vectors.
-queries_filepath: "data/siftsmall/siftsmall_query.fvecs"             # The filepath to the FVECS queries of image vectors.
-evaluation_filepath: "data/siftsmall/siftsmall_groundtruth.ivecs"     # The filepath to the IVECS evaluation metrics.
+dataset_filepath: "data/siftsmall/siftsmall_base.fvecs" # The filepath to the FVECS dataset of image vectors.
+queries_filepath: "data/siftsmall/siftsmall_query.fvecs" # The filepath to the FVECS queries of image vectors.
+evaluation_filepath: "data/siftsmall/siftsmall_groundtruth.ivecs" # The filepath to the IVECS evaluation metrics.
 
 ##########
 # Common #
 ##########
-k: 100  # The number of nearest neighbors to find.
-a: 1.0  # Scaling factor to prune outgoing edges of a node (alpha).
-L: 130  # Maximum list of search candidates to use in graph traversal.
-R: 30   # Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
+k: 100 # The number of nearest neighbors to find.
+a: 1.0 # Scaling factor to prune outgoing edges of a node (alpha).
+L: 130 # Maximum list of search candidates to use in graph traversal.
+R: 30 # Maximum number of outgoing edges of a node. Must be less than log(N) for good results.
 
 ###################
 # Filtered Vamana #
 ###################
-dummy_data_filepath: "data/sigmod-contest-2024/dummy-data.bin"                # The filepath to the Sigmod-Contest-2024 dummy data of vectors.
-dummy_queries_filepath: "data/sigmod-contest-2024/dummy-queries.bin"          # The filepath to the Sigmod-Contest-2024 dummy queries of vectors.
-groundtruth_nn_filepath: "store/groundtruth-nn.bin"                           # The filepath to the ground-truth 10 nearest neighbors of the dummy queries. 
-data_dimensions: 102                                                          # The dimension of the dummy data of vectors.
-queries_dimensions: 104                                                       # The dimension of the dummy queries of vectors.
-tau: 2                                                                        # The threshold.
+dummy_data_filepath: "data/sigmod-contest-2024/dummy-data.bin" # The filepath to the Sigmod-Contest-2024 dummy data of vectors.
+dummy_queries_filepath: "data/sigmod-contest-2024/dummy-queries.bin" # The filepath to the Sigmod-Contest-2024 dummy queries of vectors.
+groundtruth_nn_filepath: "store/groundtruth-nn.bin" # The filepath to the ground-truth 10 nearest neighbors of the dummy queries.
+data_dimensions: 102 # The dimension of the dummy data of vectors.
+queries_dimensions: 104 # The dimension of the dummy queries of vectors.
+tau: 2 # The threshold.
 
 ##################
 # Stiched Vamana #
 ##################
-L_small: 150   # Smaller than L.
-R_small: 30    # Smaller than R.
-R_stiched: 40  # The number of outgoing edges of a node in the stiched graph.
+L_small: 150 # Smaller than L.
+R_small: 30 # Smaller than R.
+R_stiched: 40 # The number of outgoing edges of a node in the stiched graph.

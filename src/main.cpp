@@ -28,6 +28,7 @@
 #include "vamana-stiched.h"
 #include "sets.h"
 #include "math.h"
+#include "utils.h"
 
 /**************/
 /* Namespaces */
@@ -121,12 +122,20 @@ int main(int argc, char *argv[])
             std::cout << termcolor::green << INFO << "Saving the produced graph in 'store/vamana.bin'" << termcolor::reset << std::endl;
             v.saveGraph(points, "store/vamana.bin");
 
-            /***************************/
-            /* Output the statistics . */
-            /***************************/
+            /**************************/
+            /* Output the statistics. */
+            /**************************/
             std::cout << termcolor::green << INFO << "Outputing the gathered statistics" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Time(findMedoid): " << stats.medoid_calculation_time << " sec" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Time(vamanaIndex): " << stats.vamana_indexing_time << " sec" << termcolor::reset << std::endl;
+
+            /************************************/
+            /* Save the results in JSON format. */
+            /************************************/
+            std::map<std::string, double> timings = {
+                {"findMedoidTime", stats.medoid_calculation_time},
+                {"vamanaIndexTime", stats.vamana_indexing_time}};
+            appendResultsToFile("vamana-initialization-stats.json", command, conf, timings);
         }
         else if (algorithm == VAMANA && command == CLI_EVAL)
         {
@@ -186,6 +195,76 @@ int main(int argc, char *argv[])
             double average_query_time = total_query_time / queries.size();
             std::cout << termcolor::yellow << DEBUGG << "Recall: " << recall << "%" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Average Query Time: " << average_query_time << " seconds" << termcolor::reset << std::endl;
+
+            /************************************/
+            /* Save the results in JSON format. */
+            /************************************/
+            std::map<std::string, double> timings = {
+                {"recall", recall},
+                {"averageQueryTime", average_query_time}};
+            appendResultsToFile("vamana-evaluation-stats.json", command, conf, timings);
+        }
+        else if (algorithm == BRUTE && command == CLI_EVAL)
+        {
+            std::cout << termcolor::blue << COMMAND << "Executing the \"" + CLI_EVAL + "\" command for the \"" + BRUTE + "\" algorithm" << termcolor::reset << std::endl;
+
+            /**********************************************************/
+            /* Validate the required YAML configuration's parameters. */
+            /**********************************************************/
+            std::cout << termcolor::green << INFO << "Validating the required YAML configuration's parameters" << termcolor::reset << std::endl;
+            validateFileExists(conf.evaluation_filepath);
+            validateFileExists("store/vamana.bin");
+            if (conf.L <= conf.k)
+                throw std::runtime_error("L must be greater than k.");
+
+            std::cout << termcolor::yellow << DEBUGG << "k: " << conf.k << termcolor::reset << std::endl;
+
+            /********************************/
+            /* Parse the provided datasets. */
+            /********************************/
+            std::cout << termcolor::green << INFO << "Parsing the provided datasets." << termcolor::reset << std::endl;
+            std::vector<Point> points = parsePointsFvecsFile(conf.dataset_filepath);
+            std::vector<Query> queries = parseQueriesFvecsFile(conf.queries_filepath);
+            std::vector<Groundtruth> grountruths = parseIvecsFile(conf.evaluation_filepath);
+            std::cout << termcolor::yellow << DEBUGG << "sizeof(points):      " << points.size() << " (\"" + conf.dataset_filepath + "\")" << termcolor::reset << std::endl;
+            std::cout << termcolor::yellow << DEBUGG << "sizeof(queries):     " << queries.size() << " (\"" + conf.queries_filepath + "\")" << termcolor::reset << std::endl;
+            std::cout << termcolor::yellow << DEBUGG << "sizeof(grountruths): " << grountruths.size() << " (\"" + conf.evaluation_filepath + "\")" << termcolor::reset << std::endl;
+
+            /****************************************/
+            /* Evaluate the Vamana Index algorithm. */
+            /****************************************/
+            std::cout << termcolor::green << INFO << "Evaluating the Vamana Indexing Algorithm" << termcolor::reset << std::endl;
+            Brute b = Brute(points);
+            int found = 0;
+            int total = 0;
+            std::set<int> nns;
+            std::set<int> gt;
+            double total_query_time = 0.0;
+            for (int i = 0; i < queries.size(); i++)
+            {
+                auto start = std::chrono::high_resolution_clock::now();
+                nns = b.bruteForceNNs(queries[i], conf.k);
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> query_time = end - start;
+                total_query_time += query_time.count();
+
+                gt = grountruths[i].getNNSet();
+
+                found += getIntersectionSize(nns, gt);
+                total += nns.size();
+            }
+            float recall = (static_cast<float>(found) / static_cast<float>(total)) * 100.0f;
+            double average_query_time = total_query_time / queries.size();
+            std::cout << termcolor::yellow << DEBUGG << "Recall: " << recall << "%" << termcolor::reset << std::endl;
+            std::cout << termcolor::yellow << DEBUGG << "Average Query Time: " << average_query_time << " seconds" << termcolor::reset << std::endl;
+
+            /************************************/
+            /* Save the results in JSON format. */
+            /************************************/
+            std::map<std::string, double> timings = {
+                {"recall", recall},
+                {"averageQueryTime", average_query_time}};
+            appendResultsToFile("vamana-evaluation-stats.json", command, conf, timings);
         }
         else if (algorithm == FILTERED_VAMANA && command == CLI_INIT)
         {
@@ -229,6 +308,14 @@ int main(int argc, char *argv[])
             std::cout << termcolor::green << INFO << "Outputing the gathered statistics" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Time(findMedoid): " << stats.medoid_calculation_time << " sec" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Time(filteredVamanaIndex): " << stats.filtered_vamana_indexing_time << " sec" << termcolor::reset << std::endl;
+
+            /************************************/
+            /* Save the results in JSON format. */
+            /************************************/
+            std::map<std::string, double> timings = {
+                {"findMedoidTime", stats.medoid_calculation_time},
+                {"filteredVamanaIndexTime", stats.filtered_vamana_indexing_time}};
+            appendResultsToFile("filtered-initialization-stats.json", command, conf, timings);
         }
         else if (command == CLI_GTNN)
         {
@@ -305,14 +392,13 @@ int main(int argc, char *argv[])
             Brute b = Brute(points);
             b.load("store/groundtruth-nn.bin");
 
-            /****************************************/
+            /*************************************************/
             /* Evaluate the Filtered Vamana Index algorithm. */
-            /****************************************/
+            /*************************************************/
             std::cout << termcolor::green << INFO << "Evaluating the Filtered Vamana Indexing Algorithm" << termcolor::reset << std::endl;
-
             int f_found = 0, f_total = 0, u_found = 0, u_total = 0;
-            double filtered_query_time = 0.0, unfiltered_query_time = 0.0;
-            int filtered_query_count = 0, unfiltered_query_count = 0;
+            double filtered_query_time = 0.0, unfiltered_query_time = 0.0, brute_query_time = 0.0;
+            int filtered_query_count = 0, unfiltered_query_count = 0, brute_query_count = 0.0;
             std::set<int> nn, gt;
 
             fv.initializingEmptyGraph();
@@ -341,6 +427,14 @@ int main(int argc, char *argv[])
                 bar.tick();
 
                 i++;
+
+                auto start = std::chrono::high_resolution_clock::now();
+                nn = b.bruteForceNNs(q, conf.k);
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> query_time = end - start;
+
+                brute_query_time += query_time.count();
+                brute_query_count++;
 
                 if (q.query_type == 2 || q.query_type == 3)
                     continue;
@@ -382,15 +476,30 @@ int main(int argc, char *argv[])
 
             bar.mark_as_completed();
 
+            /***************************/
+            /* Output the statistics . */
+            /***************************/
             float u_recall = (static_cast<float>(u_found) / static_cast<float>(u_total)) * 100.0f;
             float f_recall = (static_cast<float>(f_found) / static_cast<float>(f_total)) * 100.0f;
             double avg_filtered_query_time = filtered_query_count > 0 ? filtered_query_time / filtered_query_count : 0.0;
             double avg_unfiltered_query_time = unfiltered_query_count > 0 ? unfiltered_query_time / unfiltered_query_count : 0.0;
+            double avg_brute_query_time = brute_query_count > 0 ? brute_query_time / brute_query_count : 0.0;
 
             std::cout << termcolor::yellow << DEBUGG << "Unfiltered Recall: " << u_recall << "%" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Filtered Recall: " << f_recall << "%" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Average Unfiltered Query Time: " << avg_unfiltered_query_time << " seconds" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Average Filtered Query Time: " << avg_filtered_query_time << " seconds" << termcolor::reset << std::endl;
+            std::cout << termcolor::yellow << DEBUGG << "Average Brute Query Time: " << avg_brute_query_time << " seconds" << termcolor::reset << std::endl;
+
+            /************************************/
+            /* Save the results in JSON format. */
+            /************************************/
+            std::map<std::string, double> timings = {
+                {"unfilteredRecall", u_recall},
+                {"filteredRecall", f_recall},
+                {"unfilteredQueryTime", avg_unfiltered_query_time},
+                {"filteredQueryTime", avg_filtered_query_time}};
+            appendResultsToFile("filtered-eval.json", command, conf, timings);
         }
         else if (algorithm == STICHED_VAMANA && command == CLI_INIT)
         {
@@ -435,6 +544,13 @@ int main(int argc, char *argv[])
             /***************************/
             std::cout << termcolor::green << INFO << "Outputing the gathered statistics" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Time(stichedVamanaIndex): " << stats.stiched_vamana_indexing_time << " sec" << termcolor::reset << std::endl;
+
+            /************************************/
+            /* Save the results in JSON format. */
+            /************************************/
+            std::map<std::string, double> timings = {
+                {"stichedVamanaIndexTime", stats.stiched_vamana_indexing_time}};
+            appendResultsToFile("stiched-init.json", command, conf, timings);
         }
         else if (algorithm == STICHED_VAMANA && command == CLI_EVAL)
         {
@@ -558,6 +674,17 @@ int main(int argc, char *argv[])
             std::cout << termcolor::yellow << DEBUGG << "Filtered Recall: " << f_recall << "%" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Average Unfiltered Query Time: " << avg_unfiltered_query_time << " seconds" << termcolor::reset << std::endl;
             std::cout << termcolor::yellow << DEBUGG << "Average Filtered Query Time: " << avg_filtered_query_time << " seconds" << termcolor::reset << std::endl;
+
+            /************************************/
+            /* Save the results in JSON format. */
+            /************************************/
+
+            std::map<std::string, double> timings = {
+                {"unfilteredRecall", u_recall},
+                {"filteredRecall", f_recall},
+                {"unfilteredQueryTime", avg_unfiltered_query_time},
+                {"filteredQueryTime", avg_unfiltered_query_time}};
+            appendResultsToFile("stiched-eval.json", command, conf, timings);
         }
     }
     catch (const std::runtime_error &e)
