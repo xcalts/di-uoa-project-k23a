@@ -23,8 +23,25 @@
 /* Project Components */
 /**********************/
 
+#include "data.h"
 #include "configuration.h"
 #include "math.h"
+
+/*******************/
+/* Data Structures */
+/*******************/
+
+/**
+ * @brief
+ * Redirect the output of the functions,
+ * in order to have a clear view of the terminal when running the unitests.
+ */
+class NullStream : public std::ostream {
+public:
+    NullStream() : std::ostream(nullptr) {}
+    NullStream(const NullStream&) = delete;
+    NullStream& operator=(const NullStream&) = delete;
+};
 
 /**********/
 /* conf.h */
@@ -113,6 +130,52 @@ void test_euclidean_distance()
 }
 
 
+
+/**
+ * @brief
+ * Test Finding the Medoid in a Dataset
+ */
+void test_find_medoid() {
+
+    // Changing the cout to avoid the prints of the find medoid function
+    // Save the original std::cout buffer
+    std::streambuf* originalCoutBuffer = std::cout.rdbuf();
+
+    // Redirect std::cout to a null stream
+    NullStream nullStream;
+    std::cout.rdbuf(nullStream.rdbuf());
+
+    // Creating a small dataset
+    std::vector<Point> dataset;
+
+    Point P1(0 ,{0.0, 0.0});
+    Point P2(1 ,{1.0, 1.0});
+    Point P3(2 ,{5.0, 5.0}); 
+    Point P4(3 ,{10.0, 10.0});
+    Point P5(4 ,{12.0, 12.0});
+    dataset.emplace_back(P1);
+    dataset.emplace_back(P2);
+    dataset.emplace_back(P3);
+    dataset.emplace_back(P4);
+    dataset.emplace_back(P5);
+
+
+    Point medoid = findMedoid(dataset);
+
+    // Check if the medoid matches the expected results
+    TEST_CHECK((medoid.index == P3.index));
+
+    // Test with a single point 
+    std::vector<Point> single_point_dataset;
+    single_point_dataset.emplace_back(P1);
+    medoid = findMedoid(single_point_dataset);
+    TEST_CHECK((medoid.index == P1.index));
+
+    // Restore the original std::cout buffer
+    std::cout.rdbuf(originalCoutBuffer);
+}
+
+
 /*********/
 /* TESTS */
 /*********/
@@ -121,4 +184,5 @@ TEST_LIST = {
     {"conf.h            | Initialization      ", test_configuration_initialization},
     {"conf.h            | Non-Existent File   ", test_configuration_nonexistent_file},
     {"math.h            | Euclidean Distance  ", test_euclidean_distance},
+    {"math.h            | Find Medoid         ", test_find_medoid},
     {NULL, NULL}};
