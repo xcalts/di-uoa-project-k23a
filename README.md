@@ -35,6 +35,7 @@
     <li><a href="#build">Build</a></li>
     <li><a href="#getting-started">Getting Started</a></li>
     <li><a href="#folder-structure">Folder Structure</a></li>
+    <li><a href="#libraries">Libraries</a></li>
     <li><a href="#used-datasets">Used Datasets</a></li>
     <li><a href="#system">System</a></li>
     <li><a href="#optimizations">Optimizations</a></li>
@@ -66,6 +67,16 @@ To build the project, run the following:
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Tests
+
+To execute the unit tests, run the following:
+
+````sh
+> ./bin/unitests
+```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Getting Started
 
 To run the program, execute the following commands:
@@ -85,7 +96,7 @@ To run the program, execute the following commands:
 > ./bin/app evaluate --conf ./conf.yaml --algo "stiched-vamana"
 > # Generate the groundtruth neighbors of the queries
 > ./bin/app generate-groundtruth --conf ./conf.yaml
-```
+````
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -107,6 +118,18 @@ Here is the folder structure explained:
 ├── LICENSE.txt # Copyrights.
 └── Makefile    # Build commands.
 ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Libraries
+
+| Name                                                | Description                                    |
+| --------------------------------------------------- | ---------------------------------------------- |
+| [acutest](https://github.com/mity/acutest)          | Simple header-only C/C++ unit testing facility |
+| [argh](https://github.com/adishavit/argh)           | A minimalist argument handler                  |
+| [rapidyaml](https://github.com/biojppm/rapidyaml)   | Parse and emit YAML, and do it fast            |
+| [indicators](https://github.com/p-ranav/indicators) | Activity Indicators for Modern C++             |
+| [termcolor](https://github.com/termcolor/termcolor) | ANSI color formatting for output in terminal   |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -184,6 +207,10 @@ Terminal:                      xterm-256color
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Optimizations
+
+| Description                           | Before | After | Change (%) |
+| ------------------------------------- | ------ | ----- | ---------- |
+| Parallelization of medoid calculation | 40 sec | 7 sec | 82.5%      |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
