@@ -19,7 +19,7 @@
   <h3 align="center">Project K23a</h3>
 
   <p align="center">
-    Implementations of the Plain, Filtered and Stiched Vamana indexing algorithms.
+    Implementations of the plain, filtered and stiched vamana indexing algorithms.
     <br />
     <a href="https://github.com/xcalts/di-uoa-project-k23a/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
     ·
@@ -36,6 +36,8 @@
     <li><a href="#getting-started">Getting Started</a></li>
     <li><a href="#folder-structure">Folder Structure</a></li>
     <li><a href="#used-datasets">Used Datasets</a></li>
+    <li><a href="#system">System</a></li>
+    <li><a href="#optimizations">Optimizations</a></li>
     <li><a href="#team">Team</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
@@ -142,12 +144,55 @@ We assure that at least 100 data points in D meet the query limit.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## System
+
+All the times were recording on the following system:
+
+```sh
+Linux Distribution:            Debian GNU/Linux 12 (bookworm)
+Linux Kernel:                  6.1.0-28-amd64
+Computer Model:                Microsoft Corporation Virtual Machine Hyper-V UEFI Release v4.1
+Processor (CPU):               13th Gen Intel(R) Core(TM) i7-13800H
+CPU Sockets/Cores/Threads:     1/4/8
+CPU Caches:                    L1d: 48 KiB × 4 (192KiB)
+                               L1i: 32 KiB × 4 (128KiB)
+                               L2: 1,280 KiB × 4 (5.0MiB)
+                               L3: 24,576 KiB × 1 (24MiB)
+Architecture:                  x86_64 (64-bit)
+Total memory (RAM):            7,939 MiB (7.8GiB) (8,324 MB (8.4GB))
+Total swap space:              975 MiB (1,023 MB)
+Disk space:                    sda: 40,960 MiB (40GiB) (42,949 MB (43GB))
+Computer name:                 debian
+Hostname:                      debian
+IPv4 addresses:                eth0: [REDACTED]
+                               br-3bf608224bfc: [REDACTED]
+                               docker0: [REDACTED]
+                               br-dbe1e0b54d58: [REDACTED]
+MAC addresses:                 eth0: [REDACTED]
+                               br-3bf608224bfc: [REDACTED]
+                               docker0: [REDACTED]
+                               br-dbe1e0b54d58: [REDACTED]
+Computer ID:                   6d3e852c44a242c68065962e08cc7e2e
+Time zone:                     US/Eastern (EST, -0500)
+Language:                      en_US.UTF-8
+Virtual Machine hypervisor:    microsoft
+Bash Version:                  5.2.15(1)-release
+Terminal:                      xterm-256color
+
+```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Optimizations
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Team
 
 | #   | Name                                               | Email                | DI-UOA        |
 | --- | -------------------------------------------------- | -------------------- | ------------- |
 | 1   | [Christos Kaltsas](https://github.com/xcalts)      | sdi2000289@di.uoa.gr | 1115202000289 |
-| 1   | [Natalia Krikelli](https://github.com/nataliakrik) | sdi2000104@di.uoa.gr | 1115202000104 |
+| 2   | [Natalia Krikelli](https://github.com/nataliakrik) | sdi2000104@di.uoa.gr | 1115202000104 |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
