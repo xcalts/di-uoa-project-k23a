@@ -26,6 +26,7 @@
 #include "data.h"
 #include "configuration.h"
 #include "math.h"
+#include "sets.h"
 
 /*******************/
 /* Data Structures */
@@ -176,6 +177,55 @@ void test_find_medoid() {
 }
 
 
+
+/**********/
+/* sets.h */
+/**********/
+
+/**
+ * @brief 
+ * Test for the `getSetDifference` function.
+ */
+void test_getSetDifference()
+{
+    // Case 1: Standard difference
+    std::set<int> set_a = {1, 2, 3, 4, 5};
+    std::set<int> set_b = {3, 4, 6};
+    std::set<int> expected = {1, 2, 5};
+
+    std::set<int> result = getSetDifference(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+
+    // Case 2: Completely disjoint sets
+    set_a = {1, 2, 3};
+    set_b = {4, 5, 6};
+    expected = {1, 2, 3};
+
+    result = getSetDifference(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+
+    // Case 3: Identical sets
+    set_a = {1, 2, 3};
+    set_b = {1, 2, 3};
+    expected = {};
+
+    result = getSetDifference(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+
+    // Case 4: Empty set difference
+    set_a = {};
+    set_b = {1, 2, 3};
+    expected = {};
+
+    result = getSetDifference(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+}
+
+
 /*********/
 /* TESTS */
 /*********/
@@ -185,4 +235,5 @@ TEST_LIST = {
     {"conf.h            | Non-Existent File   ", test_configuration_nonexistent_file},
     {"math.h            | Euclidean Distance  ", test_euclidean_distance},
     {"math.h            | Find Medoid         ", test_find_medoid},
+    {"sets.h            | Set Difference      ", test_getSetDifference},
     {NULL, NULL}};
