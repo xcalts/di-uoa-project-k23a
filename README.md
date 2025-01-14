@@ -63,7 +63,7 @@ Here is an example of how it works:
 
 <div align="center">
 
-  <h3>National Kapodistrian University of Athens - Departments of Informatics</h3>
+  <p>National Kapodistrian University of Athens - Departments of Informatics</p>
 
 | #   | Name                                               | Email                | UUID          |
 | --- | -------------------------------------------------- | -------------------- | ------------- |
@@ -236,6 +236,8 @@ Terminal:                      xterm-256color
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Optimizations
+
+Our team implemented the following optimizations:
 
 | Description                                         | Before | After | Change (%) |
 | --------------------------------------------------- | ------ | ----- | ---------- |
