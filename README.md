@@ -71,7 +71,7 @@ To build the project, run the following:
 
 To execute the unit tests, run the following:
 
-````sh
+```sh
 > ./bin/unitests
 ```
 
@@ -96,7 +96,7 @@ To run the program, execute the following commands:
 > ./bin/app evaluate --conf ./conf.yaml --algo "stiched-vamana"
 > # Generate the groundtruth neighbors of the queries
 > ./bin/app generate-groundtruth --conf ./conf.yaml
-````
+```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
