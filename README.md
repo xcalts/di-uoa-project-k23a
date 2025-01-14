@@ -32,6 +32,7 @@
 <details>
   <summary>Table of Contents</summary>
   <ol>
+    <li><a href="#showcase">Showcase</a></li>
     <li><a href="#requirements">Requirements</a></li>
     <li><a href="#build">Build</a></li>
     <li><a href="#getting-started">Getting Started</a></li>
@@ -55,6 +56,8 @@ Here is an example of how it works:
     <img src=".github/showcase.gif" alt="Logo" width="800">
   </a>
 </div>
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Requirements
 
