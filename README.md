@@ -152,6 +152,8 @@ Here is the folder structure explained:
 
 ## Libraries
 
+The program uses the following external libraries:
+
 | Name                                                | Description                                    |
 | --------------------------------------------------- | ---------------------------------------------- |
 | [acutest](https://github.com/mity/acutest)          | Simple header-only C/C++ unit testing facility |
