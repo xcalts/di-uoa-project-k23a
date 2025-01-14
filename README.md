@@ -166,13 +166,19 @@ The program uses the following external libraries:
 
 ## Used Datasets
 
-### TEXMEX - Dataset for kNN Algorithms
+### TEXMEX Dataset - Evaluation of Plain Vamana
 
 It consists of large-scale datasets of high-dimensional feature vectors extracted from real-world images.
 
+| Filename                     | Size   | Dimensions |
+| ---------------------------- | ------ | ---------- |
+| shiftsmall_base.fvecs        | 10.000 | 128        |
+| shiftsmall_query.fvecs       | 100    | 128        |
+| shiftsmall_groundtruth.ivecs | 100    | 100        |
+
 - [TEXMEX - Official](http://corpus-texmex.irisa.fr/)
 
-### Sigmod Contest - Dataset Devired from YFCC100M Dataset
+### Sigmod Contest Dataset - Evaluation of Filterd|Stiched Vamana
 
 Both released and evaluation set, are derived from the YFCC100M Dataset.
 
@@ -192,9 +198,12 @@ Then, we randomly choose two data points from dataset D, utilizing their categor
 
 We assure that at least 100 data points in D meet the query limit.
 
-| #   | Name                               | Description                                               | Dataset Size | Query set Size |
-| --- | ---------------------------------- | --------------------------------------------------------- | ------------ | -------------- |
-| 1   | dummy-data.bin / dummy-queries.bin | dummy data and queries for packing submission in reprozip | 10^4         | 10^2           |
+| Filename          | Size   | Dimensions | Additional Parameters |
+| ----------------- | ------ | ---------- | --------------------- |
+| dummy-data.bin    | 10,000 | 100        | 2                     |
+| dummy-queries.bin | 1,000  | 100        | 4                     |
+
+> Note: our filtered and stiched vamana implementations do not take advantage of the timestamp attributes.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
