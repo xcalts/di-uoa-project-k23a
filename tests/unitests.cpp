@@ -27,6 +27,7 @@
 #include "configuration.h"
 #include "math.h"
 #include "sets.h"
+#include "fileio.h"
 
 /*******************/
 /* Data Structures */
@@ -261,6 +262,75 @@ void test_getSetUnion()
 }
 
 
+
+/**
+ * @brief 
+ * Test for the `getIntersectionSize` function.
+ */
+void test_getIntersectionSize()
+{
+    // Case 1: Standard intersection
+    std::set<int> set_a = {1, 2, 3, 4, 5};
+    std::set<int> set_b = {3, 4, 6};
+    int expected = 2;
+
+    int result = getIntersectionSize(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+
+    // Case 2: No intersection
+    set_a = {1, 2, 3};
+    set_b = {4, 5, 6};
+    expected = 0;
+
+    result = getIntersectionSize(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+
+    // Case 3: One empty set
+    set_a = {};
+    set_b = {1, 2, 3};
+    expected = 0;
+
+    result = getIntersectionSize(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+
+    // Case 4: Identical sets
+    set_a = {1, 2, 3};
+    set_b = {1, 2, 3};
+    expected = 3;
+
+    result = getIntersectionSize(set_a, set_b);
+
+    TEST_CHECK(result == expected);
+}
+
+
+/************/
+/* fileio.h */
+/************/
+
+/**
+ * @brief 
+ * Test reading a file with contents.
+ */
+void test_readFileContents()
+{
+    // Create a temporary file with test content
+    std::ofstream testFile("test_file.txt");
+    testFile << "This is a test file.\n";
+    testFile.close();
+
+    // Call the function and verify the output
+    std::string content = readFileContents("test_file.txt");
+    TEST_CHECK(content == "This is a test file.\n");
+
+    // Clean up the temporary file
+    std::remove("test_file.txt");
+}
+
+
 /*********/
 /* TESTS */
 /*********/
@@ -272,4 +342,6 @@ TEST_LIST = {
     {"math.h            | Find Medoid         ", test_find_medoid},
     {"sets.h            | Set Difference      ", test_getSetDifference},
     {"sets.h            | Set Union           ", test_getSetUnion},
+    {"sets.h            | Set Intersection    ", test_getIntersectionSize},
+    {"fileio.h          | Read file           ", test_readFileContents},
     {NULL, NULL}};
