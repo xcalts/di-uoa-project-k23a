@@ -230,10 +230,17 @@ Terminal:                      xterm-256color
 
 ## Team
 
+<div align="center">
+
+  <p>National Kapodistrian University of Athens</p>
+  <p>Departments of Informatics</p>
+
 | #   | Name                                               | Email                | DI-UOA        |
 | --- | -------------------------------------------------- | -------------------- | ------------- |
 | 1   | [Christos Kaltsas](https://github.com/xcalts)      | sdi2000289@di.uoa.gr | 1115202000289 |
 | 2   | [Natalia Krikelli](https://github.com/nataliakrik) | sdi2000104@di.uoa.gr | 1115202000104 |
+
+</div>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
