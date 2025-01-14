@@ -203,7 +203,8 @@ We assure that at least 100 data points in D meet the query limit.
 | dummy-data.bin    | 10,000 | 100        | 2                     |
 | dummy-queries.bin | 1,000  | 100        | 4                     |
 
-> Note: our filtered and stiched vamana implementations do not take advantage of the timestamp attributes.
+> [!NOTE]
+> Our implementations do not take advantage of the timestamp attributes.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
